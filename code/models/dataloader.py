@@ -2,14 +2,13 @@ import polars as pl
 import numpy as np
 from dataclasses import dataclass, field
 import tensorflow as tf
-
+from ..utils._gen import create_lookup_objects
+from utils._article_behaviors import map_list_article_id_to_value
 from utils._constants import (
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_LABELS_COL,
     DEFAULT_USER_COL
 )
-from utils._gen import create_lookup_objects
-from utils._behaviors import map_list_article_id_to_value
 
 class NewsrecDataLoader(tf.keras.utils.Sequence):
     """

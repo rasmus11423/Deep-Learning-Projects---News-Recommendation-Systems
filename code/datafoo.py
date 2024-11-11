@@ -16,6 +16,7 @@ from utils._behaviors import (
     )
 from utils._articles import create_article_id_to_value_mapping
 from models.dataloader import NRMSDataLoader
+
 PATH_DATA = Path("code/data")
 
 TOKEN_COL = "tokens"
@@ -95,3 +96,5 @@ def test_NRMSDataLoader():
     assert len(batch[1]) == sum(
         label_lengths[:BATCH_SIZE]
     ), "Should have unfolded all the test samples"
+
+test_NRMSDataLoader()
