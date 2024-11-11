@@ -2,9 +2,11 @@ import polars as pl
 from utils._constants import (
     DEFAULT_CLICKED_ARTICLES_COL,
     DEFAULT_INVIEW_ARTICLES_COL,
-    DEFAULT_LABELS_COL
+    DEFAULT_LABELS_COL,
+    DEFAULT_USER_COL
 )
 from utils._polars import check_columns_in_df
+from utils._gen import create_lookup_dict
 
 def generate_unique_name(existing_names: list[str], base_name: str = "new_name"):
     """
@@ -119,4 +121,13 @@ def create_binary_labels_column(
         df.join(df_labels, on=GROUPBY_ID, how="left")
         .drop(GROUPBY_ID)
         .select(_COLUMNS + [label_col])
+    )
+
+def create_user_id_to_int_mapping(
+    df: pl.DataFrame, user_col: str = DEFAULT_USER_COL, value_str: str = "id"
+):
+    return create_lookup_dict(
+        df.select(pl.col(user_col).unique()).with_row_index(value_str),
+        key=user_col,
+        value=value_str,
     )
