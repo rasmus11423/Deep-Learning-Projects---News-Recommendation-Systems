@@ -57,34 +57,29 @@ df_behaviors_train = df_behaviors.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).
 label_lengths = df_behaviors[DEFAULT_INVIEW_ARTICLES_COL].list.len().to_list()
 
 def test_NRMSDataLoader():
-    # train_dataloader = NRMSDataLoader(
-    #     behaviors=df_behaviors_train,
-    #     article_dict=article_mapping,
-    #     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    #     unknown_representation="zeros",
-    #     eval_mode=False,
-    #     batch_size=BATCH_SIZE,
-    # )
-
     train_dataloader = NRMSDataLoader(
         behaviors=df_behaviors_train,
         article_dict=article_mapping,
         history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         unknown_representation="zeros",
         eval_mode=False,
-        batch_size=100,
+        batch_size=BATCH_SIZE,
     )
     print("NRMSDataLoader initialized successfully.")
 
-
     #batch = train_dataloader.__iter__().__next__()
 
+    batch = next(iter(train_dataloader))
 
-    # Iterate over batches
+    # # Iterate over batches
     for batch in train_dataloader:
-        print("Batch inputs:", batch[0])
-        print("Batch labels:", batch[1])
+        print()
+        print("Train Dataloader")
+        print("Batch inputs shape (his_input_title):", batch[0][0].shape)
+        print("Batch inputs shape (pred_input_title):", batch[0][1].shape)
+        print("Batch labels shape:", batch[1].shape)
         break  # Exit after the first batch for testing purposes
+
 
     assert train_dataloader.__len__() == int(np.ceil(df_behaviors_train.shape[0] / 100))
     assert len(batch) == 2, "There should be two outputs: (inputs, labels)"
@@ -116,7 +111,9 @@ def test_NRMSDataLoader():
     # ), "Should have unfolded all the test samples"
 
     batch = next(iter(test_dataloader))
-    print("Batch inputs:", batch[0])
-    print("Batch labels:", batch[1])
+    print()
+    print("Test_dataloader")
+    print("Batch inputs:", batch[0][0].shape)
+    print("Batch labels:", batch[1].shape)
 
 test_NRMSDataLoader()
