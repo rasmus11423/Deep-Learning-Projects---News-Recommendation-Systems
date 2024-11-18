@@ -3,9 +3,15 @@ from pathlib import Path
 import tensorflow as tf
 import polars as pl
 
+# Dynamically resolve the base path of the current script
+BASE_PATH = Path(__file__).resolve().parent
+DATA_PATH = BASE_PATH.joinpath("data")  # Adjust based on your data directory structure
+DUMP_DIR = DATA_PATH.joinpath("dump_artifacts")
 
+# Ensure the dump directory exists
+DUMP_DIR.mkdir(parents=True, exist_ok=True)
 
-
+# Import constants and utilities
 from utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL,
     DEFAULT_CLICKED_ARTICLES_COL,
@@ -27,20 +33,19 @@ from utils._behaviors import (
 
 from utils._polars import slice_join_dataframes, concat_str_columns
 from utils._nlp import get_transformers_word_embeddings
-from utils._articles import convert_text2encoding_with_transformers,create_article_id_to_value_mapping
+from utils._articles import convert_text2encoding_with_transformers, create_article_id_to_value_mapping
 
 from models.dataloader import NRMSDataLoader
 from models.model_config import hparams_nrms
 from models.nrms import NRMSModel
 
-
+# Configure TensorFlow GPU settings
 gpus = tf.config.experimental.list_physical_devices("GPU")
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
 physical_devices = tf.config.list_physical_devices()
 print("Available devices:", physical_devices)
-
 
 def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
     """
@@ -70,11 +75,13 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
     )
     return df_behaviors
 
-PATH = Path("/Users/astridh/Documents/GitHub/Deep-Learning-Projects---News-Recommendation-Systems?fbclid=IwZXh0bgNhZW0CMTEAAR2W1fXivVjSypOEuVjFfg6jZ5IdOeH2OkDWZcbidgezWxAkAp1PnOoHKBA_aem_LPGF8NWJj3P5GF0SIL4g2w/code/data").expanduser()
+# Define paths
 DATASPLIT = "ebnerd_demo"
-DUMP_DIR = PATH.joinpath("dump_artifacts")
-DUMP_DIR.mkdir(exist_ok=True, parents=True)
+TRAIN_PATH = DATA_PATH.joinpath(DATASPLIT, "train")
+VALIDATION_PATH = DATA_PATH.joinpath(DATASPLIT, "validation")
+ARTICLES_PATH = DATA_PATH.joinpath(DATASPLIT, "articles.parquet")
 
+# Define configurations
 COLUMNS = [
     DEFAULT_USER_COL,
     DEFAULT_HISTORY_ARTICLE_ID_COL,
@@ -85,8 +92,9 @@ COLUMNS = [
 HISTORY_SIZE = 20
 FRACTION = 0.01
 
+# Load data
 df_train = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(TRAIN_PATH, history_size=HISTORY_SIZE)
     .select(COLUMNS)
     .pipe(
         sampling_strategy_wu2019,
@@ -98,9 +106,9 @@ df_train = (
     .pipe(create_binary_labels_column)
     .sample(fraction=FRACTION)
 )
-# =>
+
 df_validation = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(VALIDATION_PATH, history_size=HISTORY_SIZE)
     .select(COLUMNS)
     .pipe(create_binary_labels_column)
     .sample(fraction=FRACTION)
@@ -109,22 +117,22 @@ df_validation = (
 print("head")
 print(df_train.head(2))
 
-
-df_articles = pl.read_parquet(PATH.joinpath(DATASPLIT+"/articles.parquet"))
+df_articles = pl.read_parquet(ARTICLES_PATH)
 print(df_articles.head(2))
 
+# HuggingFace model configuration
 TRANSFORMER_MODEL_NAME = "FacebookAI/xlm-roberta-base"
 TEXT_COLUMNS_TO_USE = [DEFAULT_SUBTITLE_COL, DEFAULT_TITLE_COL]
 MAX_TITLE_LENGTH = 30
 
-# LOAD HUGGINGFACE:
+# Load transformer model and tokenizer
 transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
 transformer_tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
 
-# We'll init the word embeddings using the
+# Initialize word embeddings
 word2vec_embedding = get_transformers_word_embeddings(transformer_model)
 
-
+# Process articles
 df_articles, cat_cal = concat_str_columns(df_articles, columns=TEXT_COLUMNS_TO_USE)
 df_articles, token_col_title = convert_text2encoding_with_transformers(
     df_articles, transformer_tokenizer, cat_cal, max_length=MAX_TITLE_LENGTH
@@ -134,6 +142,7 @@ article_mapping = create_article_id_to_value_mapping(
     df=df_articles, value_col=token_col_title
 )
 
+# Initialize data loaders
 train_dataloader = NRMSDataLoader(
     behaviors=df_train,
     article_dict=article_mapping,
@@ -151,17 +160,7 @@ val_dataloader = NRMSDataLoader(
     batch_size=32,
 )
 
-# MODEL_NAME = "NRMS"
-# LOG_DIR = f"/Users/astridh/Documents/GitHub/Deep-Learning-Projects---News-Recommendation-Systems?fbclid=IwZXh0bgNhZW0CMTEAAR2W1fXivVjSypOEuVjFfg6jZ5IdOeH2OkDWZcbidgezWxAkAp1PnOoHKBA_aem_LPGF8NWJj3P5GF0SIL4g2w/code/foo/runs/{MODEL_NAME}"
-# MODEL_WEIGHTS = f"/Users/astridh/Documents/GitHub/Deep-Learning-Projects---News-Recommendation-Systems?fbclid=IwZXh0bgNhZW0CMTEAAR2W1fXivVjSypOEuVjFfg6jZ5IdOeH2OkDWZcbidgezWxAkAp1PnOoHKBA_aem_LPGF8NWJj3P5GF0SIL4g2w/code/foo/data/state_dict/{MODEL_NAME}/weights"
-
-# CALLBACKS
-# tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR, histogram_freq=1)
-# early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=2)
-# modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
-#     filepath=MODEL_WEIGHTS, save_best_only=True, save_weights_only=True, verbose=1
-# )
-
+# Initialize and train the model
 hparams_nrms.history_size = HISTORY_SIZE
 model = NRMSModel(
     hparams=hparams_nrms,
@@ -174,8 +173,8 @@ hist = model.model.fit(
     epochs=1
 )
 
+# Make predictions
 pred_validation = model.scorer.predict(val_dataloader)
-
 print(pred_validation)
 
 df_validation = add_prediction_scores(df_validation, pred_validation).pipe(
