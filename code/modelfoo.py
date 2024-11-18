@@ -3,6 +3,9 @@ from pathlib import Path
 import tensorflow as tf
 import polars as pl
 
+
+
+
 from utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL,
     DEFAULT_CLICKED_ARTICLES_COL,
@@ -148,9 +151,9 @@ val_dataloader = NRMSDataLoader(
     batch_size=32,
 )
 
-MODEL_NAME = "NRMS"
-LOG_DIR = f"/Users/astridh/Documents/GitHub/Deep-Learning-Projects---News-Recommendation-Systems?fbclid=IwZXh0bgNhZW0CMTEAAR2W1fXivVjSypOEuVjFfg6jZ5IdOeH2OkDWZcbidgezWxAkAp1PnOoHKBA_aem_LPGF8NWJj3P5GF0SIL4g2w/code/foo/runs/{MODEL_NAME}"
-MODEL_WEIGHTS = f"/Users/astridh/Documents/GitHub/Deep-Learning-Projects---News-Recommendation-Systems?fbclid=IwZXh0bgNhZW0CMTEAAR2W1fXivVjSypOEuVjFfg6jZ5IdOeH2OkDWZcbidgezWxAkAp1PnOoHKBA_aem_LPGF8NWJj3P5GF0SIL4g2w/code/foo/data/state_dict/{MODEL_NAME}/weights"
+# MODEL_NAME = "NRMS"
+# LOG_DIR = f"/Users/astridh/Documents/GitHub/Deep-Learning-Projects---News-Recommendation-Systems?fbclid=IwZXh0bgNhZW0CMTEAAR2W1fXivVjSypOEuVjFfg6jZ5IdOeH2OkDWZcbidgezWxAkAp1PnOoHKBA_aem_LPGF8NWJj3P5GF0SIL4g2w/code/foo/runs/{MODEL_NAME}"
+# MODEL_WEIGHTS = f"/Users/astridh/Documents/GitHub/Deep-Learning-Projects---News-Recommendation-Systems?fbclid=IwZXh0bgNhZW0CMTEAAR2W1fXivVjSypOEuVjFfg6jZ5IdOeH2OkDWZcbidgezWxAkAp1PnOoHKBA_aem_LPGF8NWJj3P5GF0SIL4g2w/code/foo/data/state_dict/{MODEL_NAME}/weights"
 
 # CALLBACKS
 # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR, histogram_freq=1)
@@ -170,12 +173,10 @@ hist = model.model.fit(
     validation_data=val_dataloader,
     epochs=1
 )
-#_ = model.model.load_weights(filepath=MODEL_WEIGHTS)
 
 pred_validation = model.scorer.predict(val_dataloader)
 
 print(pred_validation)
-
 
 df_validation = add_prediction_scores(df_validation, pred_validation).pipe(
     add_known_user_column, known_users=df_train[DEFAULT_USER_COL]
