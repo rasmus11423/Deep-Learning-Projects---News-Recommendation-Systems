@@ -120,12 +120,13 @@ transformer_tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
 
 # We'll init the word embeddings using the
 word2vec_embedding = get_transformers_word_embeddings(transformer_model)
-#
+
+
 df_articles, cat_cal = concat_str_columns(df_articles, columns=TEXT_COLUMNS_TO_USE)
 df_articles, token_col_title = convert_text2encoding_with_transformers(
     df_articles, transformer_tokenizer, cat_cal, max_length=MAX_TITLE_LENGTH
 )
-# =>
+
 article_mapping = create_article_id_to_value_mapping(
     df=df_articles, value_col=token_col_title
 )
@@ -148,9 +149,15 @@ val_dataloader = NRMSDataLoader(
 )
 
 MODEL_NAME = "NRMS"
-LOG_DIR = f"downloads/runs/{MODEL_NAME}"
-MODEL_WEIGHTS = f"downloads/data/state_dict/{MODEL_NAME}/weights"
+LOG_DIR = f"/Users/astridh/Documents/GitHub/Deep-Learning-Projects---News-Recommendation-Systems?fbclid=IwZXh0bgNhZW0CMTEAAR2W1fXivVjSypOEuVjFfg6jZ5IdOeH2OkDWZcbidgezWxAkAp1PnOoHKBA_aem_LPGF8NWJj3P5GF0SIL4g2w/code/foo/runs/{MODEL_NAME}"
+MODEL_WEIGHTS = f"/Users/astridh/Documents/GitHub/Deep-Learning-Projects---News-Recommendation-Systems?fbclid=IwZXh0bgNhZW0CMTEAAR2W1fXivVjSypOEuVjFfg6jZ5IdOeH2OkDWZcbidgezWxAkAp1PnOoHKBA_aem_LPGF8NWJj3P5GF0SIL4g2w/code/foo/data/state_dict/{MODEL_NAME}/weights"
 
+# CALLBACKS
+# tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR, histogram_freq=1)
+# early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=2)
+# modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
+#     filepath=MODEL_WEIGHTS, save_best_only=True, save_weights_only=True, verbose=1
+# )
 
 hparams_nrms.history_size = HISTORY_SIZE
 model = NRMSModel(
@@ -163,11 +170,15 @@ hist = model.model.fit(
     validation_data=val_dataloader,
     epochs=1
 )
-_ = model.model.load_weights(filepath=MODEL_WEIGHTS)
+#_ = model.model.load_weights(filepath=MODEL_WEIGHTS)
 
 pred_validation = model.scorer.predict(val_dataloader)
 
-df_validation = add_prediction_scores(df_validation, pred_validation.tolist()).pipe(
+print(pred_validation)
+
+
+df_validation = add_prediction_scores(df_validation, pred_validation).pipe(
     add_known_user_column, known_users=df_train[DEFAULT_USER_COL]
 )
+
 print(df_validation.head(2))
