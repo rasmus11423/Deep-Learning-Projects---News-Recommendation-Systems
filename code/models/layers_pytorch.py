@@ -72,11 +72,6 @@ class AttLayer2(nn.Module):
         return weighted_input.sum(dim=1)  # (batch_size, input_dim)
 
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-
 class SelfAttention(nn.Module):
     """
     Multi-head self-attention implementation in PyTorch.
