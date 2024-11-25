@@ -201,3 +201,60 @@
 # # Forward pass
 # encoded_news = news_encoder(sequences_input_title)
 # print("Encoded news shape:", encoded_news.shape)  # Expected: (4, 128)
+import tensorflow as tf
+import torch
+import torch.nn.functional as F
+import numpy as np
+
+# Constants
+batch_size = 2
+npratio = 4
+embedding_dim = 8
+
+# TensorFlow Implementation
+# Set seed for reproducibility
+tf.random.set_seed(42)
+
+# Create identical tensors for testing
+user_present = tf.convert_to_tensor(np.random.rand(batch_size, embedding_dim), dtype=tf.float32)
+news_present = tf.convert_to_tensor(np.random.rand(batch_size, npratio, embedding_dim), dtype=tf.float32)
+
+# TensorFlow: Compute dot product and softmax
+dot_output_tf = tf.keras.layers.Dot(axes=-1)([news_present, user_present])
+softmax_output_tf = tf.keras.layers.Activation("softmax")(dot_output_tf)
+
+print("TensorFlow Dot Product:")
+print(dot_output_tf.numpy())
+print("TensorFlow Softmax:")
+print(softmax_output_tf.numpy())
+
+# PyTorch Implementation
+# Set seed for reproducibility
+torch.manual_seed(42)
+
+# Convert TensorFlow tensors to PyTorch tensors for identical inputs
+user_present_torch = torch.tensor(user_present.numpy())
+news_present_torch = torch.tensor(news_present.numpy())
+
+# PyTorch: Compute dot product and softmax
+dot_output_torch = torch.bmm(news_present_torch, user_present_torch.unsqueeze(2)).squeeze(2)
+softmax_output_torch = F.softmax(dot_output_torch, dim=-1)
+
+print("PyTorch Dot Product:")
+print(dot_output_torch.detach().numpy())
+print("PyTorch Softmax:")
+print(softmax_output_torch.detach().numpy())
+
+# Compare TensorFlow and PyTorch outputs
+print("\nComparison:")
+try:
+    np.testing.assert_allclose(
+        softmax_output_tf.numpy(),
+        softmax_output_torch.detach().numpy(),
+        rtol=1e-5,
+        atol=1e-5
+    )
+    print("Outputs match!")
+except AssertionError as e:
+    print("Outputs do not match:")
+    print(e)
