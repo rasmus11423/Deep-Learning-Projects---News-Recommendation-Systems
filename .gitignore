@@ -1,4 +1,5 @@
 poetry.lock
 .venv/
+.neptune/
 code/utils/__pycache__
 code/models/__pycache__
