@@ -102,7 +102,7 @@ class NewsEncoder(nn.Module):
         y = self.dropout1(embedded_sequences_title)
 
         # Apply self-attention
-        y = self.self_attention(y, y, y)  # Shape: (batch_size, title_size, embedding_dim)
+        y = self.self_attention(y, y, y)  # Shape: Q, K, V
 
         # Apply second dropout
         y = self.dropout2(y)
