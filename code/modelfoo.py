@@ -4,8 +4,8 @@ import tensorflow as tf
 import polars as pl
 
 # Dynamically resolve the base path of the current script
-BASE_PATH = Path(__file__).resolve().parent
-DATA_PATH = Path("data/")  # Adjust based on your data directory structure
+BASE_PATH = Path(__file__).resolve().parent.parent
+DATA_PATH = BASE_PATH.joinpath("data")
 DUMP_DIR = DATA_PATH.joinpath("dump_artifacts")
 
 # Ensure the dump directory exists

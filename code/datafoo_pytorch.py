@@ -19,27 +19,28 @@ from utils._behaviors import (
 from utils._articles import create_article_id_to_value_mapping
 from models.dataloader_pytorch import NRMSDataLoader  # Ensure PyTorch version is imported
 
-PATH_DATA = Path("data/")
+BASE_PATH = Path(__file__).resolve().parent.parent
+DATA_PATH = BASE_PATH.joinpath("data")
 
 TOKEN_COL = "tokens"
 N_SAMPLES = "n"
 BATCH_SIZE = 100
 
 df_articles = (
-    pl.scan_parquet(PATH_DATA.joinpath("ebnerd_demo", "articles.parquet"))
+    pl.scan_parquet(DATA_PATH.joinpath("ebnerd_demo", "articles.parquet"))
     .select(pl.col(DEFAULT_ARTICLE_ID_COL, DEFAULT_CATEGORY_COL, DEFAULT_SENTIMENT_LABEL_COL))
     .with_columns(pl.Series(TOKEN_COL, np.random.randint(0, 20, (11777, 10))))
     .collect()
 )
 
 df_history = (
-    pl.scan_parquet(PATH_DATA.joinpath("ebnerd_demo/train", "history.parquet"))
+    pl.scan_parquet(DATA_PATH.joinpath("ebnerd_demo/train", "history.parquet"))
     .select(DEFAULT_USER_COL, DEFAULT_HISTORY_ARTICLE_ID_COL)
     .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(3))
 )
 
 df_behaviors = (
-    pl.scan_parquet(PATH_DATA.joinpath("ebnerd_demo/train", "behaviors.parquet"))
+    pl.scan_parquet(DATA_PATH.joinpath("ebnerd_demo/train", "behaviors.parquet"))
     .select(DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL)
     .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias(N_SAMPLES))
     .join(df_history, on=DEFAULT_USER_COL, how="left")

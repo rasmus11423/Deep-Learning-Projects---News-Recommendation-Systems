@@ -71,8 +71,8 @@ def validate_model(val_dataloader, model, criterion, device):
 # Main Script
 if __name__ == "__main__":
     # Paths to dataset
-    BASE_PATH = Path(__file__).resolve().parent
-    DATA_PATH = Path("data/")
+    BASE_PATH = Path(__file__).resolve().parent.parent
+    DATA_PATH = BASE_PATH.joinpath("data")
     # Constants
     TOKEN_COL = "tokens"
     N_SAMPLES = "n"
