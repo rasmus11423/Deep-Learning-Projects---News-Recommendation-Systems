@@ -17,7 +17,7 @@ from utils._behaviors import (
 from utils._articles import create_article_id_to_value_mapping
 from models.dataloader import NRMSDataLoader
 
-PATH_DATA = Path("code/data")
+PATH_DATA = Path("data/")
 
 TOKEN_COL = "tokens"
 N_SAMPLES = "n"

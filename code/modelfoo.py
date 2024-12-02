@@ -5,7 +5,7 @@ import polars as pl
 
 # Dynamically resolve the base path of the current script
 BASE_PATH = Path(__file__).resolve().parent
-DATA_PATH = BASE_PATH.joinpath("data")  # Adjust based on your data directory structure
+DATA_PATH = Path("data/")  # Adjust based on your data directory structure
 DUMP_DIR = DATA_PATH.joinpath("dump_artifacts")
 
 # Ensure the dump directory exists
