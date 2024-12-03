@@ -7,6 +7,9 @@ BASE_PATH = Path(__file__).resolve().parent.parent
 DATA_PATH = BASE_PATH.joinpath("data")
 LOCAL_TOKENIZER_PATH = DATA_PATH.joinpath("local-tokenizer")
 LOCAL_MODEL_PATH = DATA_PATH.joinpath("local-tokenizer-model")
+
+print("ackanowledge me damnit")
+
 # Step 1: Download and save the tokenizer and model locally (only required once)
 def download_and_save_transformer():
     print("Downloading tokenizer and model from Hugging Face...")
