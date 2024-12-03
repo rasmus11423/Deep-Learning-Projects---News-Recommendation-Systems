@@ -9,6 +9,7 @@ from models.nrms_pytorch import NRMSModel, UserEncoder, NewsEncoder
 import numpy as np
 from pathlib import Path
 import polars as pl
+from tqdm import tqdm
 from utils._behaviors import create_binary_labels_column
 from utils._articles import create_article_id_to_value_mapping
 from transformers import AutoTokenizer, AutoModel
@@ -215,17 +216,27 @@ if __name__ == "__main__":
 
     # Training setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        print(f"Using GPU: {torch.cuda.get_device_name(0)}")
+    else:
+        print("Using CPU")
+
+
     model.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     print("starting training")
-    
+
     # Training and Validation Loop
     epochs = 5
     for epoch in range(epochs):
-        train_loss, train_acc = train_model(train_loader, model, criterion, optimizer, device)
+        # Wrap train_loader with tqdm for the training progress bar
+        with tqdm(train_loader, desc="Training", unit="batch") as pbar:
+            train_loss, train_acc = train_model(pbar, model, criterion, optimizer, device)
         print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_acc:.4f}")
 
-        val_loss, val_acc = validate_model(val_loader, model, criterion, device)
+        # Wrap val_loader with tqdm for the validation progress bar
+        with tqdm(val_loader, desc="Validation", unit="batch") as pbar:
+            val_loss, val_acc = validate_model(pbar, model, criterion, device)
         print(f"Epoch {epoch+1}/{epochs}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_acc:.4f}")
