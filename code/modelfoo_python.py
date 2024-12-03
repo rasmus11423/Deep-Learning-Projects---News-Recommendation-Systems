@@ -8,7 +8,6 @@ from models.layers_pytorch import SelfAttention, AttLayer2
 from models.nrms_pytorch import NRMSModel, UserEncoder, NewsEncoder
 import numpy as np
 from pathlib import Path
-from utils._nlp import get_transformers_word_embeddings
 import polars as pl
 from utils._behaviors import create_binary_labels_column
 from utils._articles import create_article_id_to_value_mapping
@@ -17,10 +16,40 @@ from utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL,
     DEFAULT_CLICKED_ARTICLES_COL,
     DEFAULT_INVIEW_ARTICLES_COL,
-    DEFAULT_USER_COL,
-    DEFAULT_SUBTITLE_COL,
-    DEFAULT_TITLE_COL
-)
+    DEFAULT_USER_COL
+    )
+
+
+def get_word2vec_embedding_from_tokenizer(tokenizer_path, model_path, embedding_dim):
+    """
+    Generate word2vec embeddings using a pre-trained tokenizer and model.
+
+    Args:
+        tokenizer_path (str or Path): Path to the pre-trained tokenizer.
+        model_path (str or Path): Path to the pre-trained model.
+        embedding_dim (int): Embedding dimension.
+
+    Returns:
+        numpy.ndarray: Word embeddings for the tokenizer vocabulary.
+    """
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+    model = AutoModel.from_pretrained(model_path)
+
+    vocab_size = len(tokenizer)
+    model_dim = model.config.hidden_size  # Get the embedding dimension from the model
+    linear_projection = nn.Linear(model_dim, embedding_dim)  # Linear layer for projection
+    linear_projection.eval()  # Ensure no gradients are computed for projection
+
+    embedding_matrix = np.zeros((vocab_size, embedding_dim))
+
+    for token_id in range(vocab_size):
+        token_tensor = torch.tensor([token_id]).unsqueeze(0)  # Shape: (1, 1)
+        with torch.no_grad():
+            output = model.embeddings.word_embeddings(token_tensor).squeeze(0)
+            projected_output = linear_projection(output)  # Project to the desired dimension
+        embedding_matrix[token_id] = projected_output.numpy()
+
+    return embedding_matrix
 
 # Training Function
 def train_model(train_dataloader, model, criterion, optimizer, device):
@@ -77,6 +106,8 @@ if __name__ == "__main__":
     # Paths to dataset
     BASE_PATH = Path(__file__).resolve().parent.parent
     DATA_PATH = BASE_PATH.joinpath("data")
+    LOCAL_TOKENIZER_PATH = DATA_PATH.joinpath("local-tokenizer")
+    LOCAL_MODEL_PATH = DATA_PATH.joinpath("local-tokenizer-model")
     # Constants
     TOKEN_COL = "tokens"
     N_SAMPLES = "n"
@@ -115,17 +146,8 @@ if __name__ == "__main__":
         .pipe(create_binary_labels_column)
     )
 
-    # HuggingFace model configuration
-    TRANSFORMER_MODEL_NAME = "FacebookAI/xlm-roberta-base"
-    TEXT_COLUMNS_TO_USE = [DEFAULT_SUBTITLE_COL, DEFAULT_TITLE_COL]
-    MAX_TITLE_LENGTH = 30
-
-    # Load transformer model and tokenizer
-    transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
-    transformer_tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
-
     # Initialize word embeddings
-    word2vec_embedding = get_transformers_word_embeddings(transformer_model)
+    word2vec_embedding = get_word2vec_embedding_from_tokenizer(LOCAL_TOKENIZER_PATH, LOCAL_MODEL_PATH, embedding_dim)
     # Create Article Mappings
     article_mapping = create_article_id_to_value_mapping(df=df_articles, value_col=TOKEN_COL)
 
@@ -149,6 +171,8 @@ if __name__ == "__main__":
         eval_mode=True,
         batch_size=BATCH_SIZE,
     )
+
+    print("we now have data and tokenizer")
 
     # Wrap in PyTorch DataLoader
     train_loader = DataLoader(train_dataloader, batch_size=None, shuffle=True)
