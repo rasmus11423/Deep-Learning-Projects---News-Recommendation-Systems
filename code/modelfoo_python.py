@@ -74,6 +74,8 @@ def validate_model(val_dataloader, model, criterion, device):
 
 # Main Script
 if __name__ == "__main__":
+    print("running with the tokenizer")
+
     # Paths to dataset
     BASE_PATH = Path(__file__).resolve().parent.parent
     DATA_PATH = BASE_PATH.joinpath("data")
@@ -126,6 +128,9 @@ if __name__ == "__main__":
 
     # Initialize word embeddings
     word2vec_embedding = get_transformers_word_embeddings(transformer_model)
+
+    print("grabbed tokenizer no issue i guess")
+
     # Create Article Mappings
     article_mapping = create_article_id_to_value_mapping(df=df_articles, value_col=TOKEN_COL)
 
