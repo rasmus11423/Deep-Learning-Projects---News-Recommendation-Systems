@@ -45,6 +45,7 @@ def get_word2vec_embedding_from_tokenizer(tokenizer_path, model_path, embedding_
     # Initialize linear projection to reduce dimensionality
     linear_projection = nn.Linear(model_dim, embedding_dim)
     linear_projection.eval()  # Ensure no gradients are computed for projection
+    linear_projection.to(device)
 
     # Initialize embedding matrix
     embedding_matrix = np.zeros((vocab_size, embedding_dim))
