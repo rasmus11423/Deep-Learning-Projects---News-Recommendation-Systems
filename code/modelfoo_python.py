@@ -327,8 +327,8 @@ if __name__ == "__main__":
 
     # Initialize dataloaders
     # Prepare Train and Validation Sets
-    #df_behaviors_train = df_behaviors.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
-
+    df_behaviors_train = df_behaviors_train.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
+    df_behaviors_validation = df_behaviors_validation.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
     # Initialize Dataloaders
     train_dataloader = NRMSDataLoader(
         behaviors=df_behaviors_train,
