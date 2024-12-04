@@ -301,9 +301,9 @@ def evaluate_model(test_loader, model, device):
 if __name__ == "__main__":
     # Paths and constants
     BASE_PATH = Path(__file__).resolve().parent.parent
-    DATA_PATH = BASE_PATH / "code/data"
-    LOCAL_TOKENIZER_PATH = DATA_PATH / "local-tokenizer"
-    LOCAL_MODEL_PATH = DATA_PATH / "local-tokenizer-model"
+    DATA_PATH = BASE_PATH.joinpath("data")
+    LOCAL_TOKENIZER_PATH = DATA_PATH.joinpath("local-tokenizer")
+    LOCAL_MODEL_PATH = DATA_PATH.joinpath("local-tokenizer-model")
     BATCH_SIZE = 32
     N_SAMPLES = "n"
     title_size, embedding_dim, history_size = 30, 128, 3
