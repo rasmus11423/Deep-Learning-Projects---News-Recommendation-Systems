@@ -30,12 +30,16 @@ class AttLayer2(nn.Module):
         Args:
             input_dim (int): Dimension of the input features.
         """
-        self.W = nn.Parameter(torch.empty(input_dim, self.dim, dtype=torch.float32))
+        self.W = nn.Parameter(
+            torch.empty(input_dim, self.dim, dtype=torch.float32)
+        )
         nn.init.xavier_uniform_(self.W)  # Equivalent to Glorot Uniform in TF
 
         self.b = nn.Parameter(torch.zeros(self.dim, dtype=torch.float32))
 
-        self.q = nn.Parameter(torch.empty(self.dim, 1, dtype=torch.float32))
+        self.q = nn.Parameter(
+            torch.empty(self.dim, 1, dtype=torch.float32)
+        )
         nn.init.xavier_uniform_(self.q)
 
     def forward(self, inputs, mask=None):
@@ -49,21 +53,14 @@ class AttLayer2(nn.Module):
         Returns:
             torch.Tensor: Weighted sum of the input tensor (batch_size, input_dim).
         """
-        # Dynamically ensure weights are initialized
+        # Build weights dynamically if not already built
         if not hasattr(self, "W"):
             self.build(inputs.size(-1))
-
-        # Move weights to the same device as inputs
-        device = inputs.device
-        self.W = self.W.to(device)
-        self.b = self.b.to(device)
-        self.q = self.q.to(device)
 
         # Compute attention scores
         attention = torch.tanh(torch.matmul(inputs, self.W) + self.b)  # (batch_size, seq_len, dim)
         attention = torch.matmul(attention, self.q).squeeze(-1)  # (batch_size, seq_len)
 
-        # Apply mask if provided
         if mask is not None:
             attention = attention.masked_fill(~mask, float('-inf'))  # Apply mask
         attention = F.softmax(attention, dim=-1)  # Normalize attention scores
