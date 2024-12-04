@@ -35,6 +35,9 @@ def get_word2vec_embedding_from_tokenizer(tokenizer_path, model_path, embedding_
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     model = AutoModel.from_pretrained(model_path)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
     # Set vocabulary size and model dimension
     vocab_size = len(tokenizer)
     model_dim = model.config.hidden_size
