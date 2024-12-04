@@ -10,7 +10,9 @@ from tqdm import tqdm
 from models.dataloader_pytorch import NRMSDataLoader
 from models.nrms_pytorch import NRMSModel, UserEncoder, NewsEncoder
 from utils._behaviors import create_binary_labels_column
-from utils._articles import create_article_id_to_value_mapping
+from utils._articles import create_article_id_to_value_mapping, convert_text2encoding_with_transformers
+from utils._nlp import get_transformers_word_embeddings
+from utils._polars import concat_str_columns
 from utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL,
     DEFAULT_CLICKED_ARTICLES_COL,
@@ -135,8 +137,15 @@ def validate_model(val_dataloader, model, criterion, device):
 
 def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path, model_path):
 
+    TEXT_COLUMNS_TO_USE = ["article_id", "category", "sentiment_label"]
+
     print("Loading articles and generating embeddings...")
-    word2vec_embedding = get_word2vec_embedding_from_tokenizer(tokenizer_path, model_path, embedding_dim)
+    # Load transformer model and tokenizer
+    transformer_tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+    transformer_model = AutoModel.from_pretrained(model_path)
+    
+    # Initialize word embeddings
+    word2vec_embedding = get_transformers_word_embeddings(transformer_model)
 
     print("Tokenizer loaded sucessfully")
 
@@ -145,6 +154,14 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
         .select(["article_id", "category", "sentiment_label"])
         .collect()
     )
+
+    # Process articles
+    df_articles, cat_cal = concat_str_columns(df_articles, columns=TEXT_COLUMNS_TO_USE)
+
+    df_articles, token_col_title = convert_text2encoding_with_transformers(
+        df_articles, transformer_tokenizer, cat_cal, max_length=title_size
+    )
+
     num_rows = df_articles.height  # Correctly define num_rows
     df_articles = df_articles.with_columns(
         pl.Series("tokens", np.random.rand(num_rows, title_size))
@@ -174,7 +191,7 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
         .pipe(create_binary_labels_column)
     )
 
-    article_mapping = create_article_id_to_value_mapping(df=df_articles, value_col="tokens")
+    article_mapping = create_article_id_to_value_mapping(df=df_articles, value_col=token_col_title)
 
     return df_behaviors_test, df_behaviors_validation, article_mapping, word2vec_embedding
 
