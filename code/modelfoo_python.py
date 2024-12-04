@@ -150,8 +150,17 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
         .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(history_size))
     )
 
-    df_behaviors = (
+    df_behaviors_test = (
         pl.scan_parquet(data_path / "ebnerd_demo/train/behaviors.parquet")
+        .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
+        .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
+        .join(df_history, on=DEFAULT_USER_COL, how="left")
+        .collect()
+        .pipe(create_binary_labels_column)
+    )
+
+    df_behaviors_validation = (
+        pl.scan_parquet(data_path / "ebnerd_demo/validation/behaviors.parquet")
         .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
         .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
         .join(df_history, on=DEFAULT_USER_COL, how="left")
@@ -161,7 +170,7 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
 
     article_mapping = create_article_id_to_value_mapping(df=df_articles, value_col="tokens")
 
-    return df_behaviors, article_mapping, word2vec_embedding
+    return df_behaviors_test, df_behaviors_validation, article_mapping, word2vec_embedding
 
 def load_test_data(data_path, title_size):
     """
@@ -310,7 +319,7 @@ if __name__ == "__main__":
     head_num, head_dim, attention_hidden_dim, dropout = 8, 16, 200, 0.2
 
     # Load data
-    df_behaviors, article_mapping, word2vec_embedding = load_data(
+    df_behaviors_train, df_behaviors_validation, article_mapping, word2vec_embedding = load_data(
         DATA_PATH, title_size, embedding_dim, history_size, LOCAL_TOKENIZER_PATH, LOCAL_MODEL_PATH
     )
 
@@ -318,7 +327,7 @@ if __name__ == "__main__":
 
     # Initialize dataloaders
     # Prepare Train and Validation Sets
-    df_behaviors_train = df_behaviors.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
+    #df_behaviors_train = df_behaviors.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
 
     # Initialize Dataloaders
     train_dataloader = NRMSDataLoader(
@@ -329,8 +338,9 @@ if __name__ == "__main__":
         eval_mode=False,
         batch_size=BATCH_SIZE,
     )
+
     val_dataloader = NRMSDataLoader(
-        behaviors=df_behaviors,
+        behaviors=df_behaviors_validation,
         article_dict=article_mapping,
         history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         unknown_representation="zeros",
@@ -350,6 +360,7 @@ if __name__ == "__main__":
         word2vec_embedding, title_size, embedding_dim, history_size, head_num, head_dim, attention_hidden_dim, dropout
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Selected device: {device}")
     model.to(device)
 
     # Set up optimizer and loss function
@@ -357,26 +368,24 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
 
     # Training and validation loop
-    epochs = 1
+    epochs = 2
     for epoch in range(epochs):
         # Train the model
         with tqdm(train_loader, desc=f"Training Epoch {epoch + 1}") as pbar:
             train_loss, train_acc = train_model(pbar, model, criterion, optimizer, device)
         print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}")
 
-    epochs = 1
-    for epoch in range(epochs):
         # Validate the model
         with tqdm(val_loader, desc=f"Validation Epoch {epoch + 1}") as pbar:
             val_loss, val_acc = validate_model(pbar, model, criterion, device)
         print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}")
 
-    # Load and evaluate on test data
-    df_test_behaviors, test_article_mapping = load_test_data(DATA_PATH, title_size)
-    test_dataloader = NRMSDataLoader(
-        df_test_behaviors, test_article_mapping, DEFAULT_HISTORY_ARTICLE_ID_COL, "zeros", True, 1
-    )
-    test_loader = DataLoader(test_dataloader, batch_size=None, shuffle=False)
-    evaluate_model(test_loader, model, device)
+    # # Load and evaluate on test data
+    # df_test_behaviors, test_article_mapping = load_test_data(DATA_PATH, title_size)
+    # test_dataloader = NRMSDataLoader(
+    #     df_test_behaviors, test_article_mapping, DEFAULT_HISTORY_ARTICLE_ID_COL, "zeros", True, 1
+    # )
+    # test_loader = DataLoader(test_dataloader, batch_size=None, shuffle=False)
+    # evaluate_model(test_loader, model, device)
 
 print("Done")
