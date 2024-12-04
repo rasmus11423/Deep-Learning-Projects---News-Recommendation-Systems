@@ -23,11 +23,6 @@ class AttLayer2(nn.Module):
         self.dim = dim
         torch.manual_seed(seed)
 
-        # Initialize parameters here to avoid recreating them dynamically
-        self.W = None
-        self.b = None
-        self.q = None
-
     def build(self, input_dim):
         """
         Initialize the weights of the attention layer.
@@ -35,7 +30,6 @@ class AttLayer2(nn.Module):
         Args:
             input_dim (int): Dimension of the input features.
         """
-        # Initialize parameters as nn.Parameter for gradient tracking
         self.W = nn.Parameter(torch.empty(input_dim, self.dim, dtype=torch.float32))
         nn.init.xavier_uniform_(self.W)  # Equivalent to Glorot Uniform in TF
 
@@ -55,15 +49,15 @@ class AttLayer2(nn.Module):
         Returns:
             torch.Tensor: Weighted sum of the input tensor (batch_size, input_dim).
         """
-        # Dynamically build weights if they are not initialized
-        if self.W is None:
+        # Dynamically ensure weights are initialized
+        if not hasattr(self, "W"):
             self.build(inputs.size(-1))
 
-        # Ensure all parameters are on the same device as inputs
+        # Move weights to the same device as inputs
         device = inputs.device
-        self.W = self.W.to(device) if self.W.device != device else self.W
-        self.b = self.b.to(device) if self.b.device != device else self.b
-        self.q = self.q.to(device) if self.q.device != device else self.q
+        self.W = self.W.to(device)
+        self.b = self.b.to(device)
+        self.q = self.q.to(device)
 
         # Compute attention scores
         attention = torch.tanh(torch.matmul(inputs, self.W) + self.b)  # (batch_size, seq_len, dim)
