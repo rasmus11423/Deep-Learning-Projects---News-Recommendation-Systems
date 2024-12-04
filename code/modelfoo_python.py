@@ -16,6 +16,8 @@ from utils._constants import (
     DEFAULT_CLICKED_ARTICLES_COL,
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_USER_COL,
+    DEFAULT_SUBTITLE_COL,
+    DEFAULT_TITLE_COL
 )
 
 # Helper Functions
@@ -32,8 +34,17 @@ def get_word2vec_embedding_from_tokenizer(tokenizer_path, model_path, embedding_
         numpy.ndarray: Word embeddings for the tokenizer vocabulary.
     """
     # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    model = AutoModel.from_pretrained(model_path)
+    #tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+    #model = AutoModel.from_pretrained(model_path)
+
+    # HuggingFace model configuration
+    TRANSFORMER_MODEL_NAME = "FacebookAI/xlm-roberta-base"
+    TEXT_COLUMNS_TO_USE = [DEFAULT_SUBTITLE_COL, DEFAULT_TITLE_COL]
+    MAX_TITLE_LENGTH = 30
+
+    # Load transformer model and tokenizer
+    model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
 
     # Set vocabulary size and model dimension
     vocab_size = len(tokenizer)
