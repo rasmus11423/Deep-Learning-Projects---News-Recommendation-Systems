@@ -31,11 +31,11 @@ def get_word2vec_embedding_from_tokenizer(tokenizer_path, model_path, embedding_
     Returns:
         numpy.ndarray: Word embeddings for the tokenizer vocabulary.
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     # Load tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     model = AutoModel.from_pretrained(model_path)
-
-    
 
     # Set vocabulary size and model dimension
     vocab_size = len(tokenizer)
@@ -50,7 +50,6 @@ def get_word2vec_embedding_from_tokenizer(tokenizer_path, model_path, embedding_
     embedding_matrix = np.zeros((vocab_size, embedding_dim))
     for token_id in range(vocab_size):
         token_tensor = torch.tensor([token_id]).unsqueeze(0)  # Shape: (1, 1)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model.to(device)
         token_tensor.to(device)
         with torch.no_grad():
