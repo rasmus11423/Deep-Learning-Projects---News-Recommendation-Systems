@@ -71,18 +71,7 @@ class AttLayer2(nn.Module):
 
         return weighted_input.sum(dim=1)  # (batch_size, input_dim)
 
-
 class SelfAttention(nn.Module):
-    """
-    Multi-head self-attention implementation in PyTorch.
-
-    Args:
-        multiheads (int): The number of attention heads.
-        head_dim (int): Dimension of each head.
-        mask_right (bool): Whether to mask right words.
-        seed (int): Random seed for weight initialization.
-    """
-
     def __init__(self, multiheads, head_dim, seed=0, mask_right=False):
         super(SelfAttention, self).__init__()
         self.multiheads = multiheads
@@ -96,16 +85,17 @@ class SelfAttention(nn.Module):
         self.WK = None
         self.WV = None
 
-    def build(self, input_dim):
+    def build(self, input_dim, device):
         """
         Initialize the weights for query, key, and value transformations.
 
         Args:
             input_dim (int): Dimension of the input features.
+            device (torch.device): Device to initialize the weights on.
         """
-        self.WQ = nn.Parameter(torch.empty(input_dim, self.output_dim))
-        self.WK = nn.Parameter(torch.empty(input_dim, self.output_dim))
-        self.WV = nn.Parameter(torch.empty(input_dim, self.output_dim))
+        self.WQ = nn.Parameter(torch.empty(input_dim, self.output_dim, device=device))
+        self.WK = nn.Parameter(torch.empty(input_dim, self.output_dim, device=device))
+        self.WV = nn.Parameter(torch.empty(input_dim, self.output_dim, device=device))
 
         # Initialize weights using Xavier (Glorot) uniform initialization
         nn.init.xavier_uniform_(self.WQ)
@@ -155,9 +145,15 @@ class SelfAttention(nn.Module):
         Returns:
             torch.Tensor: Attention output (batch_size, seq_len, output_dim).
         """
+        device = Q.device  # Get device from the input tensor
         input_dim = Q.size(-1)
+
+        # Build weights if they haven't been initialized yet
         if self.WQ is None:
-            self.build(input_dim)
+            self.build(input_dim, device)
+
+        # Move Q, K, V to the same device as the weights
+        Q, K, V = Q.to(device), K.to(device), V.to(device)
 
         # Linear transformations for Q, K, V
         Q = torch.matmul(Q, self.WQ).view(Q.size(0), Q.size(1), self.multiheads, self.head_dim).permute(0, 2, 1, 3)
@@ -165,12 +161,12 @@ class SelfAttention(nn.Module):
         V = torch.matmul(V, self.WV).view(V.size(0), V.size(1), self.multiheads, self.head_dim).permute(0, 2, 1, 3)
 
         # Scaled dot-product attention
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32))
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32, device=device))
 
         # Masking
         if self.mask_right:
             seq_len = scores.size(-1)
-            mask = torch.triu(torch.ones(seq_len, seq_len, device=scores.device), diagonal=1) * -1e12
+            mask = torch.triu(torch.ones(seq_len, seq_len, device=device), diagonal=1) * -1e12
             scores = scores + mask
         scores = self.mask(scores, V_len, mode="add")
 
