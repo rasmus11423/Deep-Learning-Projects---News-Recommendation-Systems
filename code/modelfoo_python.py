@@ -380,12 +380,17 @@ if __name__ == "__main__":
             val_loss, val_acc = validate_model(pbar, model, criterion, device)
         print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}")
 
-    # # Load and evaluate on test data
-    # df_test_behaviors, test_article_mapping = load_test_data(DATA_PATH, title_size)
-    # test_dataloader = NRMSDataLoader(
-    #     df_test_behaviors, test_article_mapping, DEFAULT_HISTORY_ARTICLE_ID_COL, "zeros", True, 1
-    # )
-    # test_loader = DataLoader(test_dataloader, batch_size=None, shuffle=False)
-    # evaluate_model(test_loader, model, device)
+    # Load and evaluate on test data
+""" df_test_behaviors, test_article_mapping = load_test_data(DATA_PATH, title_size)
+
+    test_dataloader = NRMSDataLoader(
+            behaviors=df_test_behaviors,
+            article_dict=test_article_mapping,
+            history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+            unknown_representation="zeros",
+            eval_mode=True,
+            batch_size=1,
+        )
+    test_loader = DataLoader(test_dataloader, batch_size=None, shuffle=False) """
 
 print("Done")
