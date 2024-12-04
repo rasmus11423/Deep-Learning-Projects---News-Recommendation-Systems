@@ -47,7 +47,7 @@ def download_tokenizer():
         
     
         download_file_path = DATA_PATH.joinpath(blob.name)
-        if "model" not in blob.name:
+        if "model" in blob.name:
             print("\t" + blob.name)
             os.makedirs(download_file_path.parent, exist_ok=True)
 
