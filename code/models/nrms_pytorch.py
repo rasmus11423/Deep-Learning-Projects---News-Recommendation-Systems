@@ -30,14 +30,13 @@ class UserEncoder(nn.Module):
         Returns:
             torch.Tensor: User representation of shape (batch_size, embedding_dim).
         """
+        # Move input tensor to the correct device
+        his_input_title = his_input_title.to(next(self.parameters()).device)
 
-        # Convert input to LongTensor for embedding lookup
+        # Convert input to LongTensor for embedding lookup (if needed)
         his_input_title = his_input_title.long()
 
         batch_size, history_size, _ = his_input_title.size()
-
-        # Convert to float32
-        his_input_title = his_input_title.float()
 
         # Apply titleencoder in a TimeDistributed manner
         his_input_title = his_input_title.view(-1, his_input_title.size(-1))  # Flatten to (batch_size * history_size, title_size)
@@ -55,6 +54,7 @@ class UserEncoder(nn.Module):
             f"Expected embedding_dim={self.embedding_dim}, but got {user_representation.size(1)}"
 
         return user_representation
+
 
 
 class NewsEncoder(nn.Module):
