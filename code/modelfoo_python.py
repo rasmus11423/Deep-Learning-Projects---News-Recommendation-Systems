@@ -48,10 +48,11 @@ def get_word2vec_embedding_from_tokenizer(tokenizer_path, model_path, embedding_
 
     # Initialize embedding matrix
     embedding_matrix = np.zeros((vocab_size, embedding_dim))
+
+    model.to(device)
     for token_id in range(vocab_size):
         token_tensor = torch.tensor([token_id]).unsqueeze(0)  # Shape: (1, 1)
-        model.to(device)
-        token_tensor.to(device)
+        token_tensor = token_tensor.to(device)
         with torch.no_grad():
             output = model.embeddings.word_embeddings(token_tensor).squeeze(0)
             projected_output = linear_projection(output)  # Project to the desired dimension
