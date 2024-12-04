@@ -44,12 +44,14 @@ def download_tokenizer():
 
     blob_list = container_client.list_blobs()
     for blob in blob_list:
-        print("\t" + blob.name)
+        
     
         download_file_path = DATA_PATH.joinpath(blob.name)
-        os.makedirs(download_file_path.parent, exist_ok=True)
+        if "model" not in blob.name:
+            print("\t" + blob.name)
+            os.makedirs(download_file_path.parent, exist_ok=True)
 
-        # Download the blob
-        blob_client = container_client.get_blob_client(blob.name)
-        with open(download_file_path, "wb") as download_file:
-            download_file.write(blob_client.download_blob().readall())
+            # Download the blob
+            blob_client = container_client.get_blob_client(blob.name)
+            with open(download_file_path, "wb") as download_file:
+                download_file.write(blob_client.download_blob().readall())
