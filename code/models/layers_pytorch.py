@@ -23,7 +23,7 @@ class AttLayer2(nn.Module):
         self.dim = dim
         torch.manual_seed(seed)
 
-    def build(self, input_dim):
+    def build(self, input_dim,device):
         """
         Initialize the weights of the attention layer.
 
@@ -31,14 +31,14 @@ class AttLayer2(nn.Module):
             input_dim (int): Dimension of the input features.
         """
         self.W = nn.Parameter(
-            torch.empty(input_dim, self.dim, dtype=torch.float32)
+            torch.empty(input_dim, self.dim, dtype=torch.float32,device=device)
         )
         nn.init.xavier_uniform_(self.W)  # Equivalent to Glorot Uniform in TF
 
-        self.b = nn.Parameter(torch.zeros(self.dim, dtype=torch.float32))
+        self.b = nn.Parameter(torch.zeros(self.dim, dtype=torch.float32,device=device))
 
         self.q = nn.Parameter(
-            torch.empty(self.dim, 1, dtype=torch.float32)
+            torch.empty(self.dim, 1, dtype=torch.float32,device=device)
         )
         nn.init.xavier_uniform_(self.q)
 
@@ -53,9 +53,11 @@ class AttLayer2(nn.Module):
         Returns:
             torch.Tensor: Weighted sum of the input tensor (batch_size, input_dim).
         """
+
+        device = inputs.device
         # Build weights dynamically if not already built
         if not hasattr(self, "W"):
-            self.build(inputs.size(-1))
+            self.build(inputs.size(-1),device)
 
         # Compute attention scores
         attention = torch.tanh(torch.matmul(inputs, self.W) + self.b)  # (batch_size, seq_len, dim)
