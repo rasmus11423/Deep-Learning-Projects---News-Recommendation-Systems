@@ -24,19 +24,10 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
     model.train()
     train_loss, correct, total = 0.0, 0, 0
     for (his_input_title, pred_input_title), labels in train_dataloader:
-        print(f"Before squeeze - his_input_title shape: {his_input_title.shape}")
-        print(f"Before squeeze - pred_input_title shape: {pred_input_title.shape}")
-        print(f"Before squeeze - labels shape: {labels.shape}")
-
         # Remove unnecessary singleton dimension
         his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
         pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
         labels = labels.squeeze(1)  # shape: [batch_size, npratio]
-
-        # Debugging: Print tensor shapes after squeezing
-        print(f"After squeeze - his_input_title shape: {his_input_title.shape}")
-        print(f"After squeeze - pred_input_title shape: {pred_input_title.shape}")
-        print(f"After squeeze - labels shape: {labels.shape}")
 
         # Move data to the target device
         his_input_title = his_input_title.to(device)
@@ -76,45 +67,52 @@ def validate_model(val_dataloader, model, loss_function, device):
     val_loss, correct, total = 0.0, 0, 0
 
     with torch.no_grad():
-        for batch in val_dataloader:
+        for batch_idx, batch in enumerate(val_dataloader):
             # Unpack batch (modify this depending on DataLoader output)
             (his_input_title, pred_input_title), labels = batch
+
+            # Debugging: Check shapes before squeezing
+            print(f"Batch {batch_idx + 1} - Before squeeze:")
+            print(f"  his_input_title shape: {his_input_title.shape}")
+            print(f"  pred_input_title shape: {pred_input_title.shape}")
+            print(f"  labels shape: {labels.shape}")
+
+            # Remove singleton dimensions
+            his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
+            pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
+            labels = labels.squeeze(1)  # shape: [batch_size, npratio]
+
+            # Debugging: Check shapes after squeezing
+            print(f"Batch {batch_idx + 1} - After squeeze:")
+            print(f"  his_input_title shape: {his_input_title.shape}")
+            print(f"  pred_input_title shape: {pred_input_title.shape}")
+            print(f"  labels shape: {labels.shape}")
 
             # Move data to the target device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
-            labels = labels.to(device)  # Ensure labels are on the correct device
+            labels = labels.argmax(dim=1).to(device)  # Convert labels to appropriate format
 
-            # Debugging: Check the shape and type of the input tensors
-            print(f"Input Titles (History): {his_input_title.shape}, Type: {his_input_title.dtype}")
-            print(f"Input Titles (Prediction): {pred_input_title.shape}, Type: {pred_input_title.dtype}")
-            print(f"Labels shape: {labels.shape}, Type: {labels.dtype}")
-
-            # Ensure labels are of type Long (necessary for CrossEntropyLoss)
-            labels = labels.long()
-
-            # Debugging: Check the type of labels after conversion
-            print(f"Labels after conversion to long: {labels.shape}, Type: {labels.dtype}")
+            # Debugging: Check labels after conversion
+            print(f"Batch {batch_idx + 1} - Labels after argmax: {labels}")
 
             # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
 
-            # Debugging: Check the shape and type of predictions
-            print(f"Predictions shape: {preds.shape}, Type: {preds.dtype}")
+            # Debugging: Check the shape and values of predictions
+            print(f"Batch {batch_idx + 1} - Predictions shape: {preds.shape}")
+            print(f"Batch {batch_idx + 1} - Predictions: {preds}")
 
-            # Compute loss using the loss function
+            # Compute loss
             loss = loss_function(preds, labels)  # preds: [batch_size, num_classes], labels: [batch_size]
             val_loss += loss.item()
-
-            # Debugging: Print loss for the current batch
-            print(f"Loss for this batch: {loss.item()}")
 
             # Compute accuracy: Get predicted class by taking the argmax over logits
             predicted_classes = torch.argmax(preds, dim=1)  # Predicted class indices
 
             # Debugging: Print predicted classes and true labels
-            print(f"Predicted classes: {predicted_classes}")
-            print(f"True labels: {labels}")
+            print(f"Batch {batch_idx + 1} - Predicted classes: {predicted_classes}")
+            print(f"Batch {batch_idx + 1} - True labels: {labels}")
 
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
