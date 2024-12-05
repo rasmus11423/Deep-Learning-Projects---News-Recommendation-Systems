@@ -59,40 +59,43 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
     return train_loss, train_acc
 
 def validate_model(val_dataloader, model, criterion, device):
+    """
+    Validate the model on a validation dataset.
+
+    Args:
+        val_dataloader: Validation DataLoader.
+        model: Model to validate.
+        criterion: Loss function.
+        device: Device (CPU or GPU).
+
+    Returns:
+        val_loss (float): Average validation loss.
+        val_acc (float): Validation accuracy.
+    """
     model.eval()
     val_loss, correct, total = 0.0, 0, 0
 
     with torch.no_grad():
-        for batch in val_dataloader:
-            (his_input_title, pred_input_title), labels = batch
-
-            # Move data to device
+        for (his_input_title, pred_input_title), labels in val_dataloader:
+            # Move data to the target device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
             labels = labels.to(device)
 
-            # Ensure labels are class indices (not one-hot)
-            if labels.ndim > 1 and labels.size(1) > 1:
-                labels = labels.argmax(dim=1)
+            # Ensure labels are in the correct shape and dtype for CrossEntropyLoss
+            labels = labels.squeeze(-1).long()  # Convert to shape (batch_size) and dtype torch.long
 
-            # Ensure labels are integers
-            labels = labels.long()
-
-            # Forward pass
-            preds, _ = model(his_input_title, pred_input_title)
-
-            # Debugging checks
-            print(f"Preds dtype: {preds.dtype}, shape: {preds.shape}")
-            print(f"Labels dtype: {labels.dtype}, shape: {labels.shape}")
-
-            # Compute loss
-            val_loss += criterion(preds, labels).item()
+            # Forward pass and compute loss
+            preds, _ = model(his_input_title, pred_input_title)  # preds: (batch_size, num_classes)
+            loss = criterion(preds, labels)
+            val_loss += loss.item()
 
             # Compute accuracy
-            predicted_classes = torch.argmax(preds, dim=1)
+            predicted_classes = torch.argmax(preds, dim=1)  # Shape: (batch_size)
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
 
+    # Normalize validation loss by number of batches
     val_loss /= len(val_dataloader)
     val_acc = correct / total
 
