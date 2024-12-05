@@ -85,6 +85,9 @@ def validate_model(val_dataloader, model, loss_function, device):
             # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
 
+            # Ensure preds is in the correct shape: [batch_size, num_classes]
+            print(f"Predictions shape: {preds.shape}")
+
             # Compute loss
             loss = loss_function(preds, labels)  # preds: [batch_size, num_classes], labels: [batch_size]
             val_loss += loss.item()
@@ -92,6 +95,10 @@ def validate_model(val_dataloader, model, loss_function, device):
             # Compute accuracy: Get predicted class by taking the argmax over logits
             predicted_classes = torch.argmax(preds, dim=1)
 
+            # Ensure labels are flattened to match predicted_classes shape: [batch_size]
+            labels = labels.squeeze()
+
+            # Compute correct predictions
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
 
