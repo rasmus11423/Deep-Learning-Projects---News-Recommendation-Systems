@@ -63,7 +63,8 @@ def validate_model(val_dataloader, model, criterion, device):
     Validate the model on a validation dataset.
 
     Args:
-        val_dataloader: Validation DataLoader.
+        val_dataloader: Validation DataLoader with batches containing tuples of
+                        ((his_input_title, pred_input_title), labels).
         model: Model to validate.
         criterion: Loss function.
         device: Device (CPU or GPU).
@@ -72,12 +73,16 @@ def validate_model(val_dataloader, model, criterion, device):
         val_loss (float): Average validation loss.
         val_acc (float): Validation accuracy.
     """
-    model.eval()
+    model.eval()  # Set model to evaluation mode
     val_loss, correct, total = 0.0, 0, 0
+
+    if len(val_dataloader) == 0:  # Handle empty DataLoader
+        print("dataloader empty")
+        return float('nan'), float('nan')
 
     with torch.no_grad():
         for batch in val_dataloader:
-            # Unpack batch (modify this depending on DataLoader output)
+            # Unpack batch (ensure this matches your DataLoader's output structure)
             (his_input_title, pred_input_title), labels = batch
 
             # Move data to the target device
@@ -103,6 +108,7 @@ def validate_model(val_dataloader, model, criterion, device):
     val_acc = correct / total
 
     return val_loss, val_acc
+
 
 def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path, model_path):
 
