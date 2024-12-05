@@ -69,27 +69,39 @@ def validate_model(val_dataloader, model, criterion, device):
         device: Device (CPU or GPU).
 
     Returns:
-        val_loss (float): Total validation loss.
+        val_loss (float): Average validation loss.
         val_acc (float): Validation accuracy.
     """
     model.eval()
     val_loss, correct, total = 0.0, 0, 0
+
     with torch.no_grad():
-        for (his_input_title, pred_input_title), labels in val_dataloader:
+        for batch in val_dataloader:
+            # Unpack batch (modify this depending on DataLoader output)
+            (his_input_title, pred_input_title), labels = batch
+
             # Move data to the target device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
-            labels = labels.argmax(dim=1).to(device)
+            labels = labels.to(device)
+
+            # If labels are one-hot encoded, convert to class indices
+            if labels.ndim > 1 and labels.size(1) > 1:  # Check for one-hot encoding
+                labels = labels.argmax(dim=1)
 
             # Forward pass and compute loss
             preds, _ = model(his_input_title, pred_input_title)
             val_loss += criterion(preds, labels).item()
 
-            # Update metrics
-            correct += (torch.max(preds, 1)[1] == labels).sum().item()
+            # Compute accuracy
+            predicted_classes = torch.argmax(preds, dim=1)
+            correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
 
+    # Normalize validation loss by number of batches
+    val_loss /= len(val_dataloader)
     val_acc = correct / total
+
     return val_loss, val_acc
 
 def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path, model_path):
@@ -340,7 +352,7 @@ if __name__ == "__main__":
     model = initialize_model(
         word2vec_embedding, title_size, embedding_dim, history_size, head_num, head_dim, attention_hidden_dim, dropout
     )
-    
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Selected device: {device}")
     model.to(device)
