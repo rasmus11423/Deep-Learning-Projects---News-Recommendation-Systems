@@ -87,13 +87,14 @@ def validate_model(val_dataloader, model, loss_function, device):
 
             # Ensure preds is in the correct shape and cast to float if necessary
             print(f"Predictions shape: {preds.shape}")
-            
+
             # Ensure the preds tensor is of floating-point type
             preds = preds.float()  # Cast to float if not already
 
             # Ensure labels are 1D (class indices)
             if len(labels.shape) > 1:
                 labels = labels.squeeze()  # Remove extra dimensions if necessary
+            print(f"Labels after squeeze: {labels.shape}")  # Ensure labels are 1D
 
             # Compute loss
             loss = loss_function(preds, labels)  # preds: [batch_size, num_classes], labels: [batch_size]
