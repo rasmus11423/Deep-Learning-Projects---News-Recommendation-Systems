@@ -59,43 +59,33 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
     return train_loss, train_acc
 
 def validate_model(val_dataloader, model, criterion, device):
-    """
-    Validate the model on a validation dataset.
-
-    Args:
-        val_dataloader: Validation DataLoader with batches containing tuples of
-                        ((his_input_title, pred_input_title), labels).
-        model: Model to validate.
-        criterion: Loss function.
-        device: Device (CPU or GPU).
-
-    Returns:
-        val_loss (float): Average validation loss.
-        val_acc (float): Validation accuracy.
-    """
-    model.eval()  # Set model to evaluation mode
+    model.eval()
     val_loss, correct, total = 0.0, 0, 0
-
-    if len(val_dataloader) == 0:  # Handle empty DataLoader
-        print("dataloader empty")
-        return float('nan'), float('nan')
 
     with torch.no_grad():
         for batch in val_dataloader:
-            # Unpack batch (ensure this matches your DataLoader's output structure)
             (his_input_title, pred_input_title), labels = batch
 
-            # Move data to the target device
+            # Move data to device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
             labels = labels.to(device)
 
-            # If labels are one-hot encoded, convert to class indices
-            if labels.ndim > 1 and labels.size(1) > 1:  # Check for one-hot encoding
+            # Ensure labels are class indices (not one-hot)
+            if labels.ndim > 1 and labels.size(1) > 1:
                 labels = labels.argmax(dim=1)
 
-            # Forward pass and compute loss
+            # Ensure labels are integers
+            labels = labels.long()
+
+            # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
+
+            # Debugging checks
+            print(f"Preds dtype: {preds.dtype}, shape: {preds.shape}")
+            print(f"Labels dtype: {labels.dtype}, shape: {labels.shape}")
+
+            # Compute loss
             val_loss += criterion(preds, labels).item()
 
             # Compute accuracy
@@ -103,11 +93,11 @@ def validate_model(val_dataloader, model, criterion, device):
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
 
-    # Normalize validation loss by number of batches
     val_loss /= len(val_dataloader)
     val_acc = correct / total
 
     return val_loss, val_acc
+
 
 
 def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path, model_path):
