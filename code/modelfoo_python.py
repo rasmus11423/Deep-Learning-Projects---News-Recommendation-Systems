@@ -60,22 +60,40 @@ def validate_model(val_dataloader, model, loss_function, device):
         for batch in val_dataloader:
             # Unpack batch (modify this depending on DataLoader output)
             (his_input_title, pred_input_title), labels = batch
+            
+            # Debugging: Print the shapes of the inputs and labels
+            print(f"Original his_input_title shape: {his_input_title.shape}")
+            print(f"Original pred_input_title shape: {pred_input_title.shape}")
+            print(f"Original labels shape: {labels.shape}")
+            
             # Remove unnecessary singleton dimension
             his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
             pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
             labels = labels.squeeze(1)  # shape: [batch_size, npratio]
 
+            # Debugging: Print shapes after squeeze
+            print(f"Squeezed his_input_title shape: {his_input_title.shape}")
+            print(f"Squeezed pred_input_title shape: {pred_input_title.shape}")
+            print(f"Squeezed labels shape: {labels.shape}")
+
             # Move data to the target device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
-            labels = labels.argmax(dim=1).to(device)
+            labels = labels.argmax(dim=1).to(device)  # Assuming labels is one-hot, otherwise remove argmax
             
+            # Debugging: Print shapes after moving to device and argmax operation
+            print(f"his_input_title shape on device: {his_input_title.shape}")
+            print(f"pred_input_title shape on device: {pred_input_title.shape}")
+            print(f"labels shape on device (after argmax): {labels.shape}")
+
             preds, _ = model(his_input_title, pred_input_title)
 
-            print(f"preds: {preds}")
-            print(f"labels: {labels}")
+            # Debugging: Print the shapes of the predictions
+            print(f"preds shape: {preds.shape}")
+            print(f"preds (logits) values: {preds}")
+            print(f"labels values: {labels}")
 
-            loss = criterion(preds, labels)
+            loss = loss_function(preds, labels)
             val_loss += loss.item()
 
             # Compute accuracy: Get predicted class by taking the argmax over logits
