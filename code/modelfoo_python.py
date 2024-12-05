@@ -112,7 +112,7 @@ def validate_model(val_dataloader, model, loss_function, device):
 
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
-            
+
             # Print out loss and accuracy after loop
             print(f"Validation Loss: {val_loss}")
             print(f"Validation Accuracy: {val_acc}")
@@ -384,7 +384,7 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
 
     # Training and validation loop
-    epochs = 2
+    epochs = 3
     for epoch in range(epochs):
         # Train the model
         with tqdm(train_loader, desc=f"Training Epoch {epoch + 1}") as pbar:
