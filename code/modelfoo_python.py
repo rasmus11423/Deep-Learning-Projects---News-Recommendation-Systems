@@ -89,7 +89,7 @@ def validate_model(val_dataloader, model, loss_function, device):
             print(f"Predictions shape: {preds.shape}")
 
             # Ensure the preds tensor is of floating-point type
-            preds = preds.float()  # Cast to float if not already
+            preds = preds.long()  # Cast to float if not already
 
             # Ensure labels are 1D (class indices)
             if len(labels.shape) > 1:
