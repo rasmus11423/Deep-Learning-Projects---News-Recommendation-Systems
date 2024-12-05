@@ -92,14 +92,6 @@ def validate_model(val_dataloader, model, loss_function, device):
             print(f"Preds: {preds}")
             print(f"Labels: {labels}")
 
-            # Ensure labels are not one-hot encoded and are integers representing class indices
-            if labels.ndimension() > 1:
-                labels = labels.argmax(dim=1)  # Convert to class indices if one-hot encoded
-
-            # Ensure correct dtype: labels should be long integers (int64)
-            if labels.dtype != torch.long:
-                labels = labels.long()
-
             # Compute loss using the loss function
             loss = loss_function(preds, labels)  # preds: [batch_size, num_classes], labels: [batch_size]
             val_loss += loss.item()
@@ -113,13 +105,9 @@ def validate_model(val_dataloader, model, loss_function, device):
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
 
-            # Print out loss and accuracy after loop
 
     val_loss /= len(val_dataloader)
     val_acc = correct / total
-
-    print(f"Validation Loss: {val_loss}")
-    print(f"Validation Accuracy: {val_acc}")
 
     return val_loss, val_acc
 
