@@ -83,11 +83,12 @@ def validate_model(val_dataloader, model, loss_function, device):
             # Move data to the target device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
-            labels = labels.argmax(dim=1).to(device)  # Make sure labels are on the correct device
+            labels = labels.to(device)  # Make sure labels are on the correct device
 
             # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
-
+            preds = torch.softmax(preds, dim=-1) 
+            
             # Debugging: Print raw predictions and labels
             print(f"Preds: {preds}")
             print(f"Labels: {labels}")
