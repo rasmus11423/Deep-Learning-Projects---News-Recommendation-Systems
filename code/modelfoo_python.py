@@ -311,12 +311,13 @@ def evaluate_model(test_loader, model, device):
 
 # Main Script
 if __name__ == "__main__":
+    torch.cuda.empty_cache()
     # Paths and constants
     BASE_PATH = Path(__file__).resolve().parent.parent
     DATA_PATH = BASE_PATH.joinpath("data")
     LOCAL_TOKENIZER_PATH = DATA_PATH.joinpath("local-tokenizer")
     LOCAL_MODEL_PATH = DATA_PATH.joinpath("local-tokenizer-model")
-    BATCH_SIZE = 32
+    BATCH_SIZE = 16
     N_SAMPLES = "n"
     title_size, embedding_dim, history_size = 30, 128, 3
     head_num, head_dim, attention_hidden_dim, dropout = 8, 16, 200, 0.2
@@ -385,6 +386,7 @@ if __name__ == "__main__":
             val_loss, val_acc = validate_model(pbar, model, criterion, device)
         print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}")
 
+    torch.cuda.empty_cache()
     # Load and evaluate on test data
 """ df_test_behaviors, test_article_mapping = load_test_data(DATA_PATH, title_size)
 
