@@ -88,6 +88,10 @@ def validate_model(val_dataloader, model, loss_function, device):
             # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
 
+            # Debugging: Print raw predictions and labels
+            print(f"Preds: {preds}")
+            print(f"Labels: {labels}")
+
             # Ensure labels are not one-hot encoded and are integers representing class indices
             if labels.ndimension() > 1:
                 labels = labels.argmax(dim=1)  # Convert to class indices if one-hot encoded
@@ -101,9 +105,17 @@ def validate_model(val_dataloader, model, loss_function, device):
             val_loss += loss.item()
 
             # Compute accuracy: Get predicted class by taking the argmax over logits
+            # Compute accuracy
             predicted_classes = torch.argmax(preds, dim=1)  # Predicted class indices
+            print(f"Predicted classes: {predicted_classes}")
+            print(f"Labels: {labels}")
+
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
+            
+            # Print out loss and accuracy after loop
+            print(f"Validation Loss: {val_loss}")
+            print(f"Validation Accuracy: {val_acc}")
 
     val_loss /= len(val_dataloader)
     val_acc = correct / total
