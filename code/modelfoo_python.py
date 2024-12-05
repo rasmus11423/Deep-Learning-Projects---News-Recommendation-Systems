@@ -83,34 +83,51 @@ def validate_model(val_dataloader, model, loss_function, device):
             # Move data to the target device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
-            labels = labels.to(device)  # Make sure labels are on the correct device
+            labels = labels.to(device)  # Ensure labels are on the correct device
+
+            # Debugging: Check the shape and type of the input tensors
+            print(f"Input Titles (History): {his_input_title.shape}, Type: {his_input_title.dtype}")
+            print(f"Input Titles (Prediction): {pred_input_title.shape}, Type: {pred_input_title.dtype}")
+            print(f"Labels shape: {labels.shape}, Type: {labels.dtype}")
+
+            # Ensure labels are of type Long (necessary for CrossEntropyLoss)
+            labels = labels.long()
+
+            # Debugging: Check the type of labels after conversion
+            print(f"Labels after conversion to long: {labels.shape}, Type: {labels.dtype}")
 
             # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
-            preds = torch.softmax(preds, dim=-1) 
-            
-            # Debugging: Print raw predictions and labels
-            print(f"Preds: {preds}")
-            print(f"Labels: {labels}")
+
+            # Debugging: Check the shape and type of predictions
+            print(f"Predictions shape: {preds.shape}, Type: {preds.dtype}")
 
             # Compute loss using the loss function
             loss = loss_function(preds, labels)  # preds: [batch_size, num_classes], labels: [batch_size]
             val_loss += loss.item()
 
+            # Debugging: Print loss for the current batch
+            print(f"Loss for this batch: {loss.item()}")
+
             # Compute accuracy: Get predicted class by taking the argmax over logits
-            # Compute accuracy
             predicted_classes = torch.argmax(preds, dim=1)  # Predicted class indices
+
+            # Debugging: Print predicted classes and true labels
             print(f"Predicted classes: {predicted_classes}")
-            print(f"Labels: {labels}")
+            print(f"True labels: {labels}")
 
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
 
-
     val_loss /= len(val_dataloader)
     val_acc = correct / total
 
+    # Debugging: Print final validation loss and accuracy
+    print(f"Validation loss: {val_loss}")
+    print(f"Validation accuracy: {val_acc}")
+
     return val_loss, val_acc
+
 
 
 
