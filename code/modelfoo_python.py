@@ -67,6 +67,7 @@ def validate_model(val_dataloader, model, criterion, device):
         model: Model to validate.
         criterion: Loss function.
         device: Device (CPU or GPU).
+        num_classes: The number of classes for the model output.
 
     Returns:
         val_loss (float): Average validation loss.
@@ -87,6 +88,8 @@ def validate_model(val_dataloader, model, criterion, device):
 
             # Forward pass and compute loss
             preds, _ = model(his_input_title, pred_input_title)  # preds: (batch_size, num_classes)
+            print(f"Preds shape: {preds.shape}, Labels shape: {labels.shape}")
+
             loss = criterion(preds, labels)
             val_loss += loss.item()
 
@@ -100,6 +103,7 @@ def validate_model(val_dataloader, model, criterion, device):
     val_acc = correct / total
 
     return val_loss, val_acc
+
 
 
 
