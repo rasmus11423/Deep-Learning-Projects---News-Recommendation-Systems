@@ -20,49 +20,6 @@ from utils._constants import (
     DEFAULT_USER_COL,
 )
 
-# Helper Functions
-def get_word2vec_embedding_from_tokenizer(tokenizer_path, model_path, embedding_dim):
-    """
-    Generate word2vec embeddings using a pre-trained tokenizer and model.
-
-    Args:
-        tokenizer_path (str or Path): Path to the pre-trained tokenizer.
-        model_path (str or Path): Path to the pre-trained model.
-        embedding_dim (int): Embedding dimension.
-
-    Returns:
-        numpy.ndarray: Word embeddings for the tokenizer vocabulary.
-    """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    model = AutoModel.from_pretrained(model_path)
-
-    # Set vocabulary size and model dimension
-    vocab_size = len(tokenizer)
-    model_dim = model.config.hidden_size
-
-    # Initialize linear projection to reduce dimensionality
-    linear_projection = nn.Linear(model_dim, embedding_dim)
-    linear_projection.eval()  # Ensure no gradients are computed for projection
-    linear_projection.to(device)
-
-    # Initialize embedding matrix
-    embedding_matrix = np.zeros((vocab_size, embedding_dim))
-
-    model.to(device)
-    for token_id in range(vocab_size):
-        token_tensor = torch.tensor([token_id]).unsqueeze(0)  # Shape: (1, 1)
-        token_tensor = token_tensor.to(device)
-        with torch.no_grad():
-            output = model.embeddings.word_embeddings(token_tensor).squeeze(0)
-            projected_output = linear_projection(output)  # Project to the desired dimension
-        embedding_matrix[token_id] = projected_output.numpy()
-    return embedding_matrix
-
-
-
 def train_model(train_dataloader, model, criterion, optimizer, device):
     """
     Train the model for one epoch.
@@ -352,6 +309,7 @@ if __name__ == "__main__":
     # Prepare Train and Validation Sets
     df_behaviors_train = df_behaviors_train.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
     df_behaviors_validation = df_behaviors_validation.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
+
     # Initialize Dataloaders
     train_dataloader = NRMSDataLoader(
         behaviors=df_behaviors_train,
@@ -382,6 +340,7 @@ if __name__ == "__main__":
     model = initialize_model(
         word2vec_embedding, title_size, embedding_dim, history_size, head_num, head_dim, attention_hidden_dim, dropout
     )
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Selected device: {device}")
     model.to(device)
