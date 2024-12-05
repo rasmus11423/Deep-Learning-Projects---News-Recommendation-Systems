@@ -140,4 +140,4 @@ class NRMSDataLoader(NewsrecDataLoader):
             mapping=self.lookup_article_index,
             fill_nulls=self.unknown_index,
             drop_nulls=False,
-        )
+        )    

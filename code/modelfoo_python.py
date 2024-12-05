@@ -163,6 +163,7 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
         pl.Series("tokens", np.random.rand(num_rows, title_size))
     )
 
+
     df_history = (
         pl.scan_parquet(data_path / "ebnerd_demo/train/history.parquet")
         .select(["user_id", DEFAULT_HISTORY_ARTICLE_ID_COL])
@@ -335,7 +336,8 @@ if __name__ == "__main__":
     LOCAL_MODEL_PATH = DATA_PATH.joinpath("local-tokenizer-model")
     BATCH_SIZE = 16
     N_SAMPLES = "n"
-    title_size, embedding_dim, history_size = 30, 128, 3
+    #TODO: implement padding for history so we can history size bigger than 1
+    title_size, embedding_dim, history_size = 30, 128, 1
     head_num, head_dim, attention_hidden_dim, dropout = 8, 16, 200, 0.2
 
     # Load data
