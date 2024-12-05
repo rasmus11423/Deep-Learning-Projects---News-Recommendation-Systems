@@ -60,44 +60,21 @@ def validate_model(val_dataloader, model, loss_function, device):
         for batch in val_dataloader:
             # Unpack batch (modify this depending on DataLoader output)
             (his_input_title, pred_input_title), labels = batch
+            # Remove unnecessary singleton dimension
+            his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
+            pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
+            labels = labels.squeeze(1)  # shape: [batch_size, npratio]
 
             # Move data to the target device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
-            labels = labels.to(device)  # Ensure labels are on the correct device
+            labels = labels.argmax(dim=1).to(device)
 
-            # Debugging: Check the shape and type of the input tensors
-            print(f"Input Titles (History): {his_input_title.shape}, Type: {his_input_title.dtype}")
-            print(f"Input Titles (Prediction): {pred_input_title.shape}, Type: {pred_input_title.dtype}")
-            print(f"Labels shape: {labels.shape}, Type: {labels.dtype}")
+            print(f"preds: {preds}")
+            print(f"labels: {labels}")
 
-            # Ensure labels are of type Long (necessary for CrossEntropyLoss)
-            labels = labels.long()
-
-            # Squeeze the unnecessary dimension from pred_input_title and his_input_title
-            pred_input_title = pred_input_title.squeeze(2)  # Remove dimension 2 if its size is 1
-            his_input_title = his_input_title.squeeze(2)  # Remove dimension 2 if its size is 1
-
-            # Debugging: Check the shape after squeezing
-            print(f"Pred Input Title after squeeze: {pred_input_title.shape}")
-            print(f"His Input Title after squeeze: {his_input_title.shape}")
-
-            # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
-
-            # Ensure preds is in the correct shape and cast to float if necessary
-            print(f"Predictions shape: {preds.shape}")
-
-            # Ensure the preds tensor is of floating-point type
-            preds = preds.long()  # Cast to float if not already
-
-            # Ensure labels are 1D (class indices)
-            if len(labels.shape) > 1:
-                labels = labels.squeeze()  # Remove extra dimensions if necessary
-            print(f"Labels after squeeze: {labels.shape}")  # Ensure labels are 1D
-
-            # Compute loss
-            loss = loss_function(preds, labels)  # preds: [batch_size, num_classes], labels: [batch_size]
+            loss = criterion(preds, labels)
             val_loss += loss.item()
 
             # Compute accuracy: Get predicted class by taking the argmax over logits
