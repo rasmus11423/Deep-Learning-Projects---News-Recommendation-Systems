@@ -88,6 +88,7 @@ def validate_model(val_dataloader, model, criterion, device):
 
             # Forward pass and compute loss
             preds, _ = model(his_input_title, pred_input_title)  # preds: (batch_size, num_classes)
+            preds = preds.squeeze(1)
             print(f"Preds shape: {preds.shape}, Labels shape: {labels.shape}")
 
             loss = criterion(preds, labels)
