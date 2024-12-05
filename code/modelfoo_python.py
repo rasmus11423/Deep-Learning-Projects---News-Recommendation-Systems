@@ -21,23 +21,23 @@ from utils._constants import (
 )
 
 def train_model(train_dataloader, model, criterion, optimizer, device):
-    """
-    Train the model for one epoch.
-
-    Args:
-        train_dataloader: Training DataLoader.
-        model: Model to train.
-        criterion: Loss function.
-        optimizer: Optimizer.
-        device: Device (CPU or GPU).
-
-    Returns:
-        train_loss (float): Total training loss.
-        train_acc (float): Training accuracy.
-    """
     model.train()
     train_loss, correct, total = 0.0, 0, 0
     for (his_input_title, pred_input_title), labels in train_dataloader:
+        print(f"Before squeeze - his_input_title shape: {his_input_title.shape}")
+        print(f"Before squeeze - pred_input_title shape: {pred_input_title.shape}")
+        print(f"Before squeeze - labels shape: {labels.shape}")
+
+        # Remove unnecessary singleton dimension
+        his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
+        pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
+        labels = labels.squeeze(1)  # shape: [batch_size, npratio]
+
+        # Debugging: Print tensor shapes after squeezing
+        print(f"After squeeze - his_input_title shape: {his_input_title.shape}")
+        print(f"After squeeze - pred_input_title shape: {pred_input_title.shape}")
+        print(f"After squeeze - labels shape: {labels.shape}")
+
         # Move data to the target device
         his_input_title = his_input_title.to(device)
         pred_input_title = pred_input_title.to(device)
@@ -372,8 +372,8 @@ if __name__ == "__main__":
     )
 
     # Wrap in PyTorch DataLoader
-    train_loader = DataLoader(train_dataloader, batch_size=None, shuffle=True)
-    val_loader = DataLoader(val_dataloader, batch_size=None, shuffle=False)
+    train_loader = DataLoader(train_dataloader, batch_size=BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False)
 
     
     print("Dataloder for train/val successful")
