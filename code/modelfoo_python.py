@@ -85,8 +85,11 @@ def validate_model(val_dataloader, model, loss_function, device):
             # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
 
-            # Ensure preds is in the correct shape: [batch_size, num_classes]
+            # Ensure preds is in the correct shape and cast to float if necessary
             print(f"Predictions shape: {preds.shape}")
+            
+            # Ensure the preds tensor is of floating-point type
+            preds = preds.float()  # Cast to float if not already
 
             # Ensure labels are 1D (class indices)
             if len(labels.shape) > 1:
@@ -107,10 +110,6 @@ def validate_model(val_dataloader, model, loss_function, device):
     val_acc = correct / total
 
     return val_loss, val_acc
-
-
-
-
 
 
 
