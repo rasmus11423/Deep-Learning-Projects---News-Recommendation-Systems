@@ -69,11 +69,12 @@ def validate_model(val_dataloader, model, loss_function, device):
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
             labels = labels.argmax(dim=1).to(device)
+            
+            preds, _ = model(his_input_title, pred_input_title)
 
             print(f"preds: {preds}")
             print(f"labels: {labels}")
 
-            preds, _ = model(his_input_title, pred_input_title)
             loss = criterion(preds, labels)
             val_loss += loss.item()
 
