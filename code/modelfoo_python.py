@@ -57,6 +57,7 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
 
     train_acc = correct / total
     return train_loss, train_acc
+
 def validate_model(val_dataloader, model, loss_function, device):
     """
     Validate the model on a validation dataset.
@@ -82,16 +83,21 @@ def validate_model(val_dataloader, model, loss_function, device):
             # Move data to the target device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
-            labels = labels.to(device)
+            labels = labels.to(device)  # Make sure labels are on the correct device
 
-            # Forward pass and compute loss
+            # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
-            print(f"Preds shape: {preds.shape}, Labels shape: {labels.shape}")
 
+            # Ensure labels are not one-hot encoded and are integers representing class indices
+            if labels.ndimension() > 1:
+                labels = labels.argmax(dim=1)  # Convert to class indices if one-hot encoded
 
-            # Use the provided loss function (CrossEntropyLoss in this case)
+            # Ensure correct dtype: labels should be long integers (int64)
+            if labels.dtype != torch.long:
+                labels = labels.long()
+
+            # Compute loss using the loss function
             loss = loss_function(preds, labels)  # preds: [batch_size, num_classes], labels: [batch_size]
-
             val_loss += loss.item()
 
             # Compute accuracy: Get predicted class by taking the argmax over logits
@@ -103,6 +109,7 @@ def validate_model(val_dataloader, model, loss_function, device):
     val_acc = correct / total
 
     return val_loss, val_acc
+
 
 
 
