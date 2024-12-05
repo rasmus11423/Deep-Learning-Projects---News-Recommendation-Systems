@@ -114,11 +114,12 @@ def validate_model(val_dataloader, model, loss_function, device):
             total += labels.size(0)
 
             # Print out loss and accuracy after loop
-            print(f"Validation Loss: {val_loss}")
-            print(f"Validation Accuracy: {val_acc}")
 
     val_loss /= len(val_dataloader)
     val_acc = correct / total
+
+    print(f"Validation Loss: {val_loss}")
+    print(f"Validation Accuracy: {val_acc}")
 
     return val_loss, val_acc
 

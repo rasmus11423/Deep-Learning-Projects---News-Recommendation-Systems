@@ -152,7 +152,7 @@ class NRMSModel(nn.Module):
 
         # Compute predictions for training
         preds = torch.bmm(news_present, user_representation.unsqueeze(2)).squeeze(2)  # (batch_size, npratio)
-        preds = F.softmax(preds, dim=-1)  # Apply softmax activation
+        #preds = F.softmax(preds, dim=-1)  # Apply softmax activation
 
         # Compute predictions for a single candidate article
         pred_one = None
