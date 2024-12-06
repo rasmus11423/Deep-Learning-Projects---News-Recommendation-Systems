@@ -39,9 +39,9 @@ class UserEncoder(nn.Module):
         batch_size, history_size, _ = his_input_title.size()
 
         # Apply titleencoder in a TimeDistributed manner
-        his_input_title = his_input_title.view(-1, his_input_title.size(-1))  # Flatten to (batch_size * history_size, title_size)
+        his_input_title = his_input_title.reshape(-1, his_input_title.size(-1))  # Flatten to (batch_size * history_size, title_size)
         click_title_presents = self.titleencoder(his_input_title)  # (batch_size * history_size, embedding_dim)
-        click_title_presents = click_title_presents.view(batch_size, history_size, -1)  # Reshape back to (batch_size, history_size, embedding_dim)
+        click_title_presents = click_title_presents.reshape(batch_size, history_size, -1)  # Reshape back to (batch_size, history_size, embedding_dim)
 
         # Apply self-attention
         self_attention_out = self.self_attention(click_title_presents, click_title_presents, click_title_presents)
@@ -146,9 +146,9 @@ class NRMSModel(nn.Module):
         user_representation = self.user_encoder(his_input_title)  # (batch_size, embedding_dim)
 
         # Encode candidate articles
-        pred_input_title = pred_input_title.view(-1, title_size)  # Flatten to (batch_size * npratio, title_size)
+        pred_input_title = pred_input_title.reshape(-1, title_size)  # Flatten to (batch_size * npratio, title_size)
         news_present = self.news_encoder(pred_input_title)  # (batch_size * npratio, embedding_dim)
-        news_present = news_present.view(batch_size, npratio, self.embedding_dim)  # Reshape back
+        news_present = news_present.reshape(batch_size, npratio, self.embedding_dim)  # Reshape back
 
         # Compute predictions for training
         preds = torch.bmm(news_present, user_representation.unsqueeze(2)).squeeze(2)  # (batch_size, npratio)
