@@ -4,7 +4,11 @@ from azure.storage.blob import BlobServiceClient
 
 def download_datasets(dataset):
     '''Function which downloads dataset from azure'''
+    datasets_choices = ["ebrec-demo","ebnerd-small"]
 
+    if dataset not in datasets_choices:
+        raise ValueError(f"Dataset not in cloud: choose from: {datasets_choices}")
+        
     BASE_PATH = Path(__file__).resolve().parent.parent.parent
     DATA_PATH = BASE_PATH.joinpath("data")
 
