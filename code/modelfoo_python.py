@@ -49,6 +49,10 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
         total += labels.size(0)
 
     train_acc = correct / total
+
+    # print(f"Debug: his_input_title shape: {his_input_title.shape}")  # Expecting [batch_size, history_size, title_size]
+    # print(f"Debug: pred_input_title shape: {pred_input_title.shape}")  # Expecting [batch_size, npratio, title_size]
+
     return train_loss, train_acc
 
 # 
@@ -108,12 +112,16 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
     transformer_model = AutoModel.from_pretrained(model_path)
     
     # Initialize word embeddings
+
     word2vec_embedding = get_transformers_word_embeddings(transformer_model)
+    assert word2vec_embedding.shape[1] == embedding_dim, \
+    f"Expected embedding_dim={embedding_dim}, but got {word2vec_embedding.shape[1]}"
+
 
     print("Tokenizer loaded sucessfully")
 
     df_articles = (
-        pl.scan_parquet(data_path / "ebnerd_demo/articles.parquet")
+        pl.scan_parquet(data_path / "ebnerd_small/articles.parquet")
         .select(["article_id", "category", "sentiment_label"])
         .collect()
     )
@@ -132,13 +140,13 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
 
 
     df_history = (
-        pl.scan_parquet(data_path / "ebnerd_demo/train/history.parquet")
+        pl.scan_parquet(data_path / "ebnerd_small/train/history.parquet")
         .select(["user_id", DEFAULT_HISTORY_ARTICLE_ID_COL])
         .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(history_size))
     )
 
     df_behaviors_test = (
-        pl.scan_parquet(data_path / "ebnerd_demo/train/behaviors.parquet")
+        pl.scan_parquet(data_path / "ebnerd_small/train/behaviors.parquet")
         .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
         .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
         .join(df_history, on=DEFAULT_USER_COL, how="left")
@@ -147,7 +155,7 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
     )
 
     df_behaviors_validation = (
-        pl.scan_parquet(data_path / "ebnerd_demo/validation/behaviors.parquet")
+        pl.scan_parquet(data_path / "ebnerd_small/validation/behaviors.parquet")
         .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
         .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
         .join(df_history, on=DEFAULT_USER_COL, how="left")
@@ -226,26 +234,26 @@ def load_test_data(data_path, title_size):
 
 def initialize_model(word2vec_embedding, title_size, embedding_dim, history_size, head_num, head_dim, attention_hidden_dim, dropout):
     """
-    Initialize the NRMS model with consistent architecture for training and evaluation.
+    Initialize the NRMS model with correct embedding dimension and consistent architecture.
     """
     print("Initializing NewsEncoder and UserEncoder with all submodules...")
 
-    # Initialize NewsEncoder with self_attention and att_layer
+    # Correctly initialize NewsEncoder
     news_encoder = NewsEncoder(
         word2vec_embedding=word2vec_embedding,
         title_size=title_size,
-        embedding_dim=embedding_dim,
+        embedding_dim=embedding_dim,  # Use dynamic embedding_dim
         dropout=dropout,
         head_num=head_num,
         head_dim=head_dim,
         attention_hidden_dim=attention_hidden_dim,
     )
 
-    # Initialize UserEncoder with self_attention and att_layer
+    # Correctly initialize UserEncoder
     user_encoder = UserEncoder(
         titleencoder=news_encoder,
         history_size=history_size,
-        embedding_dim=embedding_dim,
+        embedding_dim=embedding_dim,  # Use dynamic embedding_dim
         head_num=head_num,
         head_dim=head_dim,
         attention_hidden_dim=attention_hidden_dim,
@@ -255,13 +263,14 @@ def initialize_model(word2vec_embedding, title_size, embedding_dim, history_size
     model = NRMSModel(
         user_encoder=user_encoder,
         news_encoder=news_encoder,
-        embedding_dim=embedding_dim,
+        embedding_dim=embedding_dim,  # Use dynamic embedding_dim
     )
 
     print("Model initialized with the following architecture:")
     print(model)
 
     return model
+
 
 def evaluate_model(test_loader, model, device):
     """
@@ -304,7 +313,7 @@ if __name__ == "__main__":
     BATCH_SIZE = 16
     N_SAMPLES = "n"
     #TODO: implement padding for history so we can history size bigger than 1
-    title_size, embedding_dim, history_size = 30, 128, 1
+    title_size, embedding_dim, history_size = 30, 768, 1
     head_num, head_dim, attention_hidden_dim, dropout = 8, 16, 200, 0.2
 
     # Load data
@@ -345,21 +354,24 @@ if __name__ == "__main__":
     
     print("Dataloder for train/val successful")
 
-    # Initialize model
+
+    print(f"Initializing model with embedding_dim={embedding_dim}")
     model = initialize_model(
         word2vec_embedding, title_size, embedding_dim, history_size, head_num, head_dim, attention_hidden_dim, dropout
     )
+    print(f"Loaded word2vec embedding shape: {word2vec_embedding.shape}")
+
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Selected device: {device}")
     model.to(device)
 
     # Set up optimizer and loss function
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-5) # with added weight decay
     criterion = nn.CrossEntropyLoss()
 
     # Training and validation loop
-    epochs = 3
+    epochs = 10
     for epoch in range(epochs):
         # Train the model
         with tqdm(train_loader, desc=f"Training Epoch {epoch + 1}") as pbar:

@@ -118,3 +118,94 @@ def test_NRMSDataLoader():
     print("Batch labels shape:", batch[1].shape)
 
 test_NRMSDataLoader()
+
+def test_NRMSDataLoader_with_validation():
+    # Train Dataloader
+    train_dataloader = NRMSDataLoader(
+        behaviors=df_behaviors_train,
+        article_dict=article_mapping,
+        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+        unknown_representation="zeros",
+        eval_mode=False,
+        batch_size=BATCH_SIZE,
+    )
+
+    train_loader = DataLoader(train_dataloader, batch_size=None, shuffle=False)
+
+    print("Train Dataloader:")
+    for batch in train_loader:
+        print("Batch inputs shape (his_input_title):", batch[0][0].shape)
+        print("Batch inputs shape (pred_input_title):", batch[0][1].shape)
+        print("Batch labels shape:", batch[1].shape)
+        break  # Testing one batch
+
+    # Test Dataloader
+    test_dataloader = NRMSDataLoader(
+        behaviors=df_behaviors,
+        article_dict=article_mapping,
+        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+        unknown_representation="zeros",
+        eval_mode=True,
+        batch_size=BATCH_SIZE,
+    )
+
+    test_loader = DataLoader(test_dataloader, batch_size=None, shuffle=False)
+
+    print("\nTest Dataloader:")
+    for batch in test_loader:
+        print("Batch inputs shape (his_input_title):", batch[0][0].shape)
+        print("Batch inputs shape (pred_input_title):", batch[0][1].shape)
+        print("Batch labels shape:", batch[1].shape)
+        break  # Testing one batch
+
+    # Validation Dataloader
+    df_behaviors_validation = (
+        pl.scan_parquet(DATA_PATH.joinpath("ebnerd_demo/validation", "behaviors.parquet"))
+        .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
+        .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias(N_SAMPLES))
+        .join(df_history, on=DEFAULT_USER_COL, how="left")
+        .collect()
+        .pipe(create_binary_labels_column)
+    )
+
+    df_behaviors_validation = df_behaviors_validation.filter(
+        pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min()
+    )
+
+    validation_dataloader = NRMSDataLoader(
+        behaviors=df_behaviors_validation,
+        article_dict=article_mapping,
+        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+        unknown_representation="zeros",
+        eval_mode=True,
+        batch_size=BATCH_SIZE,
+    )
+
+    val_loader = DataLoader(validation_dataloader, batch_size=None, shuffle=False)
+
+    print("\nValidation Dataloader:")
+    for batch in val_loader:
+        print("Batch inputs shape (his_input_title):", batch[0][0].shape)
+        print("Batch inputs shape (pred_input_title):", batch[0][1].shape)
+        print("Batch labels shape:", batch[1].shape)
+        break  # Testing one batch
+
+    # Assertions to verify consistency
+    for loader_name, loader in [
+        ("Train", train_loader),
+        ("Test", test_loader),
+        ("Validation", val_loader),
+    ]:
+        batch = next(iter(loader))
+        his_input_title, pred_input_title = batch[0]
+        labels = batch[1]
+
+        assert his_input_title.ndim == 3, f"{loader_name} Dataloader: Invalid his_input_title shape"
+        assert pred_input_title.ndim == 3, f"{loader_name} Dataloader: Invalid pred_input_title shape"
+        assert labels.ndim in [2, 3], f"{loader_name} Dataloader: Invalid labels shape"
+
+    print("\nAll dataloaders passed validation.")
+
+
+# Run the test
+test_NRMSDataLoader_with_validation()
