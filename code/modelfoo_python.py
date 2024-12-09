@@ -50,10 +50,6 @@ if not args.debug:
 else:
     print("Debug mode: Neptune logging is disabled.")
 
-if not args.debug:
-    params = {"optimizer": "Adam"}
-    run["parameters"] = params
-
 def train_model(train_dataloader, model, criterion, optimizer, device):
     model.train()
     train_loss, correct, total = 0.0, 0, 0
@@ -138,6 +134,10 @@ def validate_model(val_dataloader, model, criterion, device):
 
     val_acc = correct / total if total > 0 else 0
     val_loss /= len(val_dataloader)
+
+    if not args.debug:
+        run["validation/loss"].log(val_loss)
+        run["validation/accuracy"].log(val_acc)
     return val_loss, val_acc
 
 
@@ -407,8 +407,15 @@ if __name__ == "__main__":
     model.to(device)
 
     # Set up optimizer and loss function
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-5) # with added weight decay
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5) # with added weight decay
     criterion = nn.CrossEntropyLoss()
+
+    if not args.debug:
+        params = {
+            "optimizer": "Adam",
+            "learning_rate":0.01
+            }
+        run["parameters"] = params
 
     # Training and validation loop
     epochs = 10
