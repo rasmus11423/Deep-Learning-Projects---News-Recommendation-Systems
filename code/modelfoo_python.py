@@ -413,7 +413,9 @@ if __name__ == "__main__":
     if not args.debug:
         params = {
             "optimizer": "Adam",
-            "learning_rate":0.01
+            "learning_rate":0.01,
+            "dataset": dataset_name,
+            "batchsize": BATCH_SIZE
             }
         run["parameters"] = params
 
@@ -445,6 +447,9 @@ if __name__ == "__main__":
             batch_size=1,
         )
     test_loader = DataLoader(test_dataloader, batch_size=None, shuffle=False) """
+
+if not args.debug:
+    run.stop()
 
 print("Done")
 
