@@ -422,7 +422,7 @@ if __name__ == "__main__":
         run["parameters"] = params
 
     # Training and validation loop
-    epochs = 10
+    epochs = 20
     for epoch in range(epochs):
         # Train the model
         with tqdm(train_loader, desc=f"Training Epoch {epoch + 1}") as pbar:
