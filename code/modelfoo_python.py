@@ -353,7 +353,7 @@ if __name__ == "__main__":
     BATCH_SIZE = 32
     N_SAMPLES = "n"
     #TODO: implement padding for history so we can history size bigger than 1
-    title_size, embedding_dim, history_size = 30, 768, 3
+    title_size, embedding_dim, history_size = 30, 768, 1
     head_num, head_dim, attention_hidden_dim, dropout = 8, 16, 200, 0.2
 
     # Load data
