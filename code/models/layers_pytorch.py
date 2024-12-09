@@ -82,12 +82,17 @@ class SelfAttention(nn.Module):
         self.mask_right = mask_right
         torch.manual_seed(seed)
 
+        print(f"[DEBUG] Multiheads={self.multiheads}, Head Dim={self.head_dim}, Expected Output Dim={self.output_dim}")
+
         # Placeholder weights; dimensions will be defined during build
         self.WQ = None
         self.WK = None
         self.WV = None
 
     def build(self, input_dim, device):
+        if input_dim != self.output_dim:
+            raise ValueError(f"Input dim mismatch: Expected {self.output_dim}, but got {input_dim}")
+        
         """
         Initialize the weights for query, key, and value transformations.
 
@@ -183,4 +188,6 @@ class SelfAttention(nn.Module):
 
         # Mask output for query length
         output = self.mask(output, Q_len, mode="mul")
+        #print(f"Self-Attention Final Output Shape: {output.shape}")
+
         return output

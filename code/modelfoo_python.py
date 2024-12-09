@@ -24,6 +24,8 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
     model.train()
     train_loss, correct, total = 0.0, 0, 0
     for (his_input_title, pred_input_title), labels in train_dataloader:
+        #print(f"his_input_title:  {his_input_title.shape}")
+
         # Remove unnecessary singleton dimension
         his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
         pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
@@ -47,9 +49,15 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
         total += labels.size(0)
 
     train_acc = correct / total
+
+    # print(f"Debug: his_input_title shape: {his_input_title.shape}")  # Expecting [batch_size, history_size, title_size]
+    # print(f"Debug: pred_input_title shape: {pred_input_title.shape}")  # Expecting [batch_size, npratio, title_size]
+
     return train_loss, train_acc
 
-def validate_model(val_dataloader, model, loss_function, device):
+# 
+
+def validate_model(val_dataloader, model, criterion, device):
     """
     Validate the model on a validation dataset.
     """
@@ -60,52 +68,36 @@ def validate_model(val_dataloader, model, loss_function, device):
         for batch in val_dataloader:
             # Unpack batch (modify this depending on DataLoader output)
             (his_input_title, pred_input_title), labels = batch
-            
-            # Debugging: Print the shapes of the inputs and labels
-            print(f"Original his_input_title shape: {his_input_title.shape}")
-            print(f"Original pred_input_title shape: {pred_input_title.shape}")
-            print(f"Original labels shape: {labels.shape}")
-            
-            # Remove unnecessary singleton dimension
-            his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
-            pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
-            labels = labels.squeeze(1)  # shape: [batch_size, npratio]
 
-            # Debugging: Print shapes after squeeze
-            print(f"Squeezed his_input_title shape: {his_input_title.shape}")
-            print(f"Squeezed pred_input_title shape: {pred_input_title.shape}")
-            print(f"Squeezed labels shape: {labels.shape}")
+            if his_input_title.ndim > 3:
+                his_input_title = his_input_title.squeeze(2)
+            if pred_input_title.ndim > 3:
+                pred_input_title = pred_input_title.squeeze(2)
+            if labels.ndim > 2:
+                labels = labels.squeeze(-1)
+            
+            # Reduce labels to class indices (if one-hot encoded)
+            labels = labels.argmax(dim=1).to(device)
 
             # Move data to the target device
             his_input_title = his_input_title.to(device)
             pred_input_title = pred_input_title.to(device)
-            labels = labels.argmax(dim=1).to(device)  # Assuming labels is one-hot, otherwise remove argmax
-            
-            # Debugging: Print shapes after moving to device and argmax operation
-            print(f"his_input_title shape on device: {his_input_title.shape}")
-            print(f"pred_input_title shape on device: {pred_input_title.shape}")
-            print(f"labels shape on device (after argmax): {labels.shape}")
 
+            # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
 
-            # Debugging: Print the shapes of the predictions
-            print(f"preds shape: {preds.shape}")
-            print(f"preds (logits) values: {preds}")
-            print(f"labels values: {labels}")
+            # Apply softmax if outputs are logits
+            preds = torch.softmax(preds, dim=1)
 
-            loss = loss_function(preds, labels)
+            loss = criterion(preds, labels)
+
+            # Update loss and accuracy
             val_loss += loss.item()
-
-            # Compute accuracy: Get predicted class by taking the argmax over logits
-            predicted_classes = torch.argmax(preds, dim=1)
-
-            # Compute correct predictions
-            correct += (predicted_classes == labels).sum().item()
+            correct += (torch.max(preds, 1)[1] == labels).sum().item()
             total += labels.size(0)
 
+    val_acc = correct / total if total > 0 else 0
     val_loss /= len(val_dataloader)
-    val_acc = correct / total
-
     return val_loss, val_acc
 
 
@@ -120,12 +112,16 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
     transformer_model = AutoModel.from_pretrained(model_path)
     
     # Initialize word embeddings
+
     word2vec_embedding = get_transformers_word_embeddings(transformer_model)
+    assert word2vec_embedding.shape[1] == embedding_dim, \
+    f"Expected embedding_dim={embedding_dim}, but got {word2vec_embedding.shape[1]}"
+
 
     print("Tokenizer loaded sucessfully")
 
     df_articles = (
-        pl.scan_parquet(data_path / "ebnerd_demo/articles.parquet")
+        pl.scan_parquet(data_path / "ebnerd_small/articles.parquet")
         .select(["article_id", "category", "sentiment_label"])
         .collect()
     )
@@ -144,13 +140,13 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
 
 
     df_history = (
-        pl.scan_parquet(data_path / "ebnerd_demo/train/history.parquet")
+        pl.scan_parquet(data_path / "ebnerd_small/train/history.parquet")
         .select(["user_id", DEFAULT_HISTORY_ARTICLE_ID_COL])
         .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(history_size))
     )
 
     df_behaviors_test = (
-        pl.scan_parquet(data_path / "ebnerd_demo/train/behaviors.parquet")
+        pl.scan_parquet(data_path / "ebnerd_small/train/behaviors.parquet")
         .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
         .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
         .join(df_history, on=DEFAULT_USER_COL, how="left")
@@ -159,7 +155,7 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
     )
 
     df_behaviors_validation = (
-        pl.scan_parquet(data_path / "ebnerd_demo/validation/behaviors.parquet")
+        pl.scan_parquet(data_path / "ebnerd_small/validation/behaviors.parquet")
         .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
         .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
         .join(df_history, on=DEFAULT_USER_COL, how="left")
@@ -238,26 +234,26 @@ def load_test_data(data_path, title_size):
 
 def initialize_model(word2vec_embedding, title_size, embedding_dim, history_size, head_num, head_dim, attention_hidden_dim, dropout):
     """
-    Initialize the NRMS model with consistent architecture for training and evaluation.
+    Initialize the NRMS model with correct embedding dimension and consistent architecture.
     """
     print("Initializing NewsEncoder and UserEncoder with all submodules...")
 
-    # Initialize NewsEncoder with self_attention and att_layer
+    # Correctly initialize NewsEncoder
     news_encoder = NewsEncoder(
         word2vec_embedding=word2vec_embedding,
         title_size=title_size,
-        embedding_dim=embedding_dim,
+        embedding_dim=embedding_dim,  # Use dynamic embedding_dim
         dropout=dropout,
         head_num=head_num,
         head_dim=head_dim,
         attention_hidden_dim=attention_hidden_dim,
     )
 
-    # Initialize UserEncoder with self_attention and att_layer
+    # Correctly initialize UserEncoder
     user_encoder = UserEncoder(
         titleencoder=news_encoder,
         history_size=history_size,
-        embedding_dim=embedding_dim,
+        embedding_dim=embedding_dim,  # Use dynamic embedding_dim
         head_num=head_num,
         head_dim=head_dim,
         attention_hidden_dim=attention_hidden_dim,
@@ -267,13 +263,14 @@ def initialize_model(word2vec_embedding, title_size, embedding_dim, history_size
     model = NRMSModel(
         user_encoder=user_encoder,
         news_encoder=news_encoder,
-        embedding_dim=embedding_dim,
+        embedding_dim=embedding_dim,  # Use dynamic embedding_dim
     )
 
     print("Model initialized with the following architecture:")
     print(model)
 
     return model
+
 
 def evaluate_model(test_loader, model, device):
     """
@@ -316,7 +313,7 @@ if __name__ == "__main__":
     BATCH_SIZE = 16
     N_SAMPLES = "n"
     #TODO: implement padding for history so we can history size bigger than 1
-    title_size, embedding_dim, history_size = 30, 128, 1
+    title_size, embedding_dim, history_size = 30, 768, 1
     head_num, head_dim, attention_hidden_dim, dropout = 8, 16, 200, 0.2
 
     # Load data
@@ -357,21 +354,24 @@ if __name__ == "__main__":
     
     print("Dataloder for train/val successful")
 
-    # Initialize model
+
+    print(f"Initializing model with embedding_dim={embedding_dim}")
     model = initialize_model(
         word2vec_embedding, title_size, embedding_dim, history_size, head_num, head_dim, attention_hidden_dim, dropout
     )
+    print(f"Loaded word2vec embedding shape: {word2vec_embedding.shape}")
+
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Selected device: {device}")
     model.to(device)
 
     # Set up optimizer and loss function
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-5) # with added weight decay
     criterion = nn.CrossEntropyLoss()
 
     # Training and validation loop
-    epochs = 3
+    epochs = 10
     for epoch in range(epochs):
         # Train the model
         with tqdm(train_loader, desc=f"Training Epoch {epoch + 1}") as pbar:
@@ -382,6 +382,8 @@ if __name__ == "__main__":
         with tqdm(val_loader, desc=f"Validation Epoch {epoch + 1}") as pbar:
             val_loss, val_acc = validate_model(pbar, model, criterion, device)
         print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}")
+
+
 
     torch.cuda.empty_cache()
     # Load and evaluate on test data
@@ -398,3 +400,55 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataloader, batch_size=None, shuffle=False) """
 
 print("Done")
+
+
+
+# def validate_model(val_dataloader, model, criterion, device):
+#     """
+#     Validate the model with improved accuracy handling and debugging.
+#     """
+#     model.eval()
+#     val_loss, correct, total = 0.0, 0, 0
+
+#     with torch.no_grad():
+#         for batch_idx, (his_input_title, pred_input_title), labels in enumerate(val_dataloader):
+#             # Log initial shapes for debugging
+#             print(f"Batch {batch_idx}:")
+#             print(f"Initial his_input_title shape: {his_input_title.shape}")
+#             print(f"Initial pred_input_title shape: {pred_input_title.shape}")
+#             print(f"Initial labels shape: {labels.shape}")
+
+#             # Adjust shapes safely
+#             if his_input_title.ndim > 3 and his_input_title.size(2) == 1:
+#                 his_input_title = his_input_title.squeeze(2)
+#             if pred_input_title.ndim > 3 and pred_input_title.size(2) == 1:
+#                 pred_input_title = pred_input_title.squeeze(2)
+#             if labels.ndim > 2 and labels.size(-1) == 1:
+#                 labels = labels.squeeze(-1)
+
+#             # Convert labels to device and ensure compatibility
+#             labels = labels.argmax(dim=1).to(device)
+
+#             # Move inputs to device
+#             his_input_title = his_input_title.to(device)
+#             pred_input_title = pred_input_title.to(device)
+
+#             # Forward pass
+#             preds, _ = model(his_input_title, pred_input_title)
+
+#             # Apply softmax if outputs are logits
+#             preds = torch.softmax(preds, dim=1)
+
+#             # Compute loss
+#             loss = criterion(preds, labels)
+#             val_loss += loss.item()
+
+#             # Compute accuracy
+#             predicted_classes = preds.argmax(dim=1)
+#             correct += (predicted_classes == labels).sum().item()
+#             total += labels.size(0)
+
+#     val_loss /= len(val_dataloader)
+#     val_acc = correct / total if total > 0 else 0
+#     print(f"Validation Accuracy: {val_acc:.4f}")
+#     return val_loss, val_acc

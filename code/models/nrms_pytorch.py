@@ -6,9 +6,7 @@ sys.path.append(str(Path(__file__).resolve().parent))
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-#from models.layers_pytorch import SelfAttention
-from models.layers_pytorch import AttLayer2,SelfAttention
+from models.layers_pytorch import AttLayer2, SelfAttention
 
 
 class UserEncoder(nn.Module):
@@ -17,149 +15,116 @@ class UserEncoder(nn.Module):
         self.history_size = history_size
         self.embedding_dim = embedding_dim
         self.titleencoder = titleencoder
-        self.self_attention = SelfAttention(multiheads=head_num, head_dim=head_dim, seed=seed)
+        self.self_attention = SelfAttention(multiheads=head_num, head_dim=embedding_dim // head_num)
+
         self.attention = AttLayer2(dim=attention_hidden_dim, seed=seed)
 
     def forward(self, his_input_title):
-        """
-        Forward pass for the UserEncoder.
+        his_input_title = his_input_title.to(next(self.parameters()).device).long()
+        batch_size, history_size, title_size = his_input_title.size()
 
-        Args:
-            his_input_title (torch.Tensor): Input tensor of shape (batch_size, history_size, title_size).
+        # Encode user history
+        his_input_title = his_input_title.reshape(-1, title_size)
+        click_title_presents = self.titleencoder(his_input_title)
+        click_title_presents = click_title_presents.reshape(batch_size, history_size, -1)
 
-        Returns:
-            torch.Tensor: User representation of shape (batch_size, embedding_dim).
-        """
-        # Move input tensor to the correct device
-        his_input_title = his_input_title.to(next(self.parameters()).device)
-
-        # Convert input to LongTensor for embedding lookup (if needed)
-        his_input_title = his_input_title.long()
-
-        batch_size, history_size, _ = his_input_title.size()
-
-        # Apply titleencoder in a TimeDistributed manner
-        his_input_title = his_input_title.view(-1, his_input_title.size(-1))  # Flatten to (batch_size * history_size, title_size)
-        click_title_presents = self.titleencoder(his_input_title)  # (batch_size * history_size, embedding_dim)
-        click_title_presents = click_title_presents.view(batch_size, history_size, -1)  # Reshape back to (batch_size, history_size, embedding_dim)
+        #print(f"Click Title Presentations Shape: {click_title_presents.shape}")
 
         # Apply self-attention
         self_attention_out = self.self_attention(click_title_presents, click_title_presents, click_title_presents)
+        #print(f"Self-Attention Output Shape (UserEncoder): {self_attention_out.shape}")
 
-        # Apply soft alignment attention (AttLayer2)
-        user_representation = self.attention(self_attention_out)  # (batch_size, embedding_dim)
+        # Apply soft alignment attention
+        user_representation = self.attention(self_attention_out)
+        #print(f"User Representation Shape: {user_representation.shape}")
 
-        # Validate user_representation dimensions
-        assert user_representation.size(1) == self.embedding_dim, \
-            f"Expected embedding_dim={self.embedding_dim}, but got {user_representation.size(1)}"
-
+        # Ensure correct output dimension
+        if user_representation.size(-1) != self.embedding_dim:
+            raise RuntimeError(f"UserEncoder Error: Expected embedding_dim={self.embedding_dim}, "
+                            f"but got {user_representation.size(-1)}")
         return user_representation
 
 
 
 class NewsEncoder(nn.Module):
     def __init__(self, word2vec_embedding, title_size, embedding_dim, dropout, head_num, head_dim, attention_hidden_dim):
-        """
-        Initializes the News Encoder for NRMS.
-
-        Args:
-            word2vec_embedding (np.ndarray): Pre-trained word embeddings.
-            title_size (int): Size of the title sequence.
-            embedding_dim (int): Dimension of embeddings.
-            dropout (float): Dropout rate.
-            head_num (int): Number of attention heads.
-            head_dim (int): Dimension of each attention head.
-            attention_hidden_dim (int): Hidden dimension for the attention layer.
-        """
         super(NewsEncoder, self).__init__()
         self.embedding = nn.Embedding.from_pretrained(
             torch.tensor(word2vec_embedding, dtype=torch.float32),
-            freeze=False  # Trainable embeddings
+            freeze=False
         )
+
+        # Correct initialization
         self.dropout1 = nn.Dropout(dropout)
-        self.self_attention = SelfAttention(multiheads=head_num, head_dim=head_dim)
+        # Fix in UserEncoder and NewsEncoder Initialization
+        self.self_attention = SelfAttention(multiheads=6, head_dim=128)  # 6 * 128 = 768
         self.dropout2 = nn.Dropout(dropout)
-        self.att_layer = AttLayer2(dim=attention_hidden_dim)
+        self.att_layer = AttLayer2(dim=embedding_dim)  # Fix output dim
 
-    def forward(self, sequences_input_title ):
-        """
-        Forward pass of the News Encoder.
+    def forward(self, sequences_input_title):
+        sequences_input_title = sequences_input_title.long()
+        embedded_sequences_title = self.embedding(sequences_input_title)
 
-        Args:
-            sequences_input_title (torch.Tensor): Input tensor of shape (batch_size, title_size).
-
-        Returns:
-            torch.Tensor: Encoded news representation of shape (batch_size, embedding_dim).
-        """
-
-        # Ensure input is of type LongTensor for embedding lookup
-        sequences_input_title = sequences_input_title.long()  # Convert to LongTensor
-
-        # Embedding lookup
-        embedded_sequences_title = self.embedding(sequences_input_title)  # Shape: (batch_size, title_size, embedding_dim)
-
-        # Apply first dropout
         y = self.dropout1(embedded_sequences_title)
-
-        # Apply self-attention
-        y = self.self_attention(y, y, y)  # Shape: Q, K, V
-
-        # Apply second dropout
+        y = self.self_attention(y, y, y)
         y = self.dropout2(y)
+        pred_title = self.att_layer(y)
 
-        # Apply attention layer to get the final news representation
-        pred_title = self.att_layer(y)  # Shape: (batch_size, embedding_dim)
+        # Add debugging
+        # print(f"Embedded Sequences Shape: {embedded_sequences_title.shape}")
+        # print(f"Self-Attention Output Shape: {y.shape}")
+        # print(f"Predicted Title Shape: {pred_title.shape}")
 
         return pred_title
-    
+
 
 class NRMSModel(nn.Module):
     def __init__(self, user_encoder, news_encoder, embedding_dim):
-        """
-        NRMS Model initialization.
-
-        Args:
-            user_encoder (nn.Module): Instance of the UserEncoder.
-            news_encoder (nn.Module): Instance of the NewsEncoder.
-            embedding_dim (int): Dimension of the embeddings.
-        """
         super(NRMSModel, self).__init__()
         self.user_encoder = user_encoder
         self.news_encoder = news_encoder
         self.embedding_dim = embedding_dim
+        self.layer_norm_pred = nn.LayerNorm(embedding_dim)
+        #print(f"Model initialized with embedding_dim={self.embedding_dim}")
 
     def forward(self, his_input_title, pred_input_title, pred_input_title_one=None):
-        """
-        Forward pass for the NRMS model.
+        #print(f"NRMS Model Input Shapes: his_input_title={his_input_title.shape}, pred_input_title={pred_input_title.shape}")
 
-        Args:
-            his_input_title (torch.Tensor): User history input of shape (batch_size, history_size, title_size).
-            pred_input_title (torch.Tensor): Candidate articles of shape (batch_size, npratio, title_size).
-            pred_input_title_one (torch.Tensor, optional): A single candidate article of shape (batch_size, 1, title_size).
-
-        Returns:
-            tuple: Predictions for training and single candidate article.
-        """
         batch_size, npratio, title_size = pred_input_title.size()
 
-        # Encode user history into user representation
-        user_representation = self.user_encoder(his_input_title)  # (batch_size, embedding_dim)
+        # Encode user history
+        user_representation = self.user_encoder(his_input_title)
+        #print(f"User Representation Shape: {user_representation.shape}")
 
         # Encode candidate articles
-        pred_input_title = pred_input_title.view(-1, title_size)  # Flatten to (batch_size * npratio, title_size)
-        news_present = self.news_encoder(pred_input_title)  # (batch_size * npratio, embedding_dim)
-        news_present = news_present.view(batch_size, npratio, self.embedding_dim)  # Reshape back
+        pred_input_title = pred_input_title.reshape(-1, title_size)
+        #print(f"Flattened Candidate Articles Shape: {pred_input_title.shape}")
+        news_present = self.news_encoder(pred_input_title)
 
-        # Compute predictions for training
-        preds = torch.bmm(news_present, user_representation.unsqueeze(2)).squeeze(2)  # (batch_size, npratio)
-        #preds = F.softmax(preds, dim=-1)  # Apply softmax activation
+        expected_size = batch_size * npratio * self.embedding_dim
+        if news_present.numel() != expected_size:
+            raise RuntimeError(
+                f"Shape mismatch: expected {expected_size}, but got {news_present.numel()}. "
+                f"Actual shape: {news_present.shape}"
+            )
 
-        # Compute predictions for a single candidate article
+        news_present = news_present.reshape(batch_size, npratio, self.embedding_dim)
+        #print(f"Reshaped News Present Shape: {news_present.shape}")
+
+        user_representation = self.layer_norm_pred(user_representation)
+        #print(f"Normalized User Representation Shape: {user_representation.shape}")
+
+        # Compute predictions
+        preds = torch.bmm(news_present, user_representation.unsqueeze(2)).squeeze(2)
+        #print(f"Predictions Shape: {preds.shape}")
+
         pred_one = None
         if pred_input_title_one is not None:
-            pred_input_title_one = pred_input_title_one.squeeze(1)  # (batch_size, title_size)
-            news_present_one = self.news_encoder(pred_input_title_one)  # (batch_size, embedding_dim)
-            pred_one = torch.bmm(news_present_one.unsqueeze(1), user_representation.unsqueeze(2)).squeeze(2)  # (batch_size, 1)
-            pred_one = torch.sigmoid(pred_one)  # Apply sigmoid activation
+            pred_input_title_one = pred_input_title_one.squeeze(1)
+            news_present_one = self.news_encoder(pred_input_title_one)
+            #print(f"Single News Present Shape: {news_present_one.shape}")
+            pred_one = torch.bmm(news_present_one.unsqueeze(1), user_representation.unsqueeze(2)).squeeze(2)
+            pred_one = torch.sigmoid(pred_one)
+            #print(f"Single Prediction Shape: {pred_one.shape}")
 
         return preds, pred_one
