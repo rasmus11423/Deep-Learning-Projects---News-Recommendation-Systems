@@ -35,4 +35,4 @@ source "/dtu/blackhole/04/133892/venv/bin/activate"
 export NEPTUNE_API_TOKEN="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI3ZmM0ZDRjMC00MDU4LTRmNTctYjViNC04NjA3ZWY4NzZmMGUifQ=="
 # here call torchrun
 #torchrun --standalone --nproc_per_node=1 
-python "/dtu/blackhole/04/133892/Deep-Learning-Projects---News-Recommendation-Systems/code/modelfoo_python.py"
+python "/dtu/blackhole/04/133892/Deep-Learning-Projects---News-Recommendation-Systems/code/modelfoo_python.py" --dataset "ebnerd_small"
