@@ -6,6 +6,9 @@ from transformers import AutoTokenizer, AutoModel
 import numpy as np
 from pathlib import Path
 import polars as pl
+import argparse
+import neptune
+import os
 from tqdm import tqdm
 from models.dataloader_pytorch import NRMSDataLoader
 from models.nrms_pytorch import NRMSModel, UserEncoder, NewsEncoder
@@ -19,6 +22,34 @@ from utils._constants import (
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_USER_COL,
 )
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="Train a model with optional Neptune logging.")
+parser.add_argument("--debug", action="store_true", help="Run the script in debug mode (no Neptune logging).")
+parser.add_argument("--dataset", type=str, required=True, help="Name of the dataset to use for training.")
+args = parser.parse_args()
+
+# Access the dataset name
+dataset_name = args.dataset
+print(f"Using dataset: {dataset_name}")
+
+# Initialize Neptune run unless in debug mode
+if not args.debug:
+    # Get API token from environment variable
+    api_token = os.getenv("NEPTUNE_API_TOKEN")
+    if api_token is None:
+        raise ValueError("Neptune API token not found. Please set the 'NEPTUNE_API_TOKEN' environment variable.")
+
+    run = neptune.init(
+        project="your_project",  # Replace with your project name
+        api_token=api_token,
+    )
+else:
+    print("Debug mode: Neptune logging is disabled.")
+
+if not args.debug:
+    params = {"optimizer": "Adam"}
+    run["parameters"] = params
 
 def train_model(train_dataloader, model, criterion, optimizer, device):
     model.train()
@@ -49,6 +80,12 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
         total += labels.size(0)
 
     train_acc = correct / total
+
+    if not args.debug:
+        run["train/loss"].log(loss.item())
+        run["train/accuracy"].log(train_acc)
+
+    
 
     # print(f"Debug: his_input_title shape: {his_input_title.shape}")  # Expecting [batch_size, history_size, title_size]
     # print(f"Debug: pred_input_title shape: {pred_input_title.shape}")  # Expecting [batch_size, npratio, title_size]
@@ -121,7 +158,7 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
     print("Tokenizer loaded sucessfully")
 
     df_articles = (
-        pl.scan_parquet(data_path / "ebnerd_small/articles.parquet")
+        pl.scan_parquet(data_path /"articles.parquet")
         .select(["article_id", "category", "sentiment_label"])
         .collect()
     )
@@ -140,13 +177,13 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
 
 
     df_history = (
-        pl.scan_parquet(data_path / "ebnerd_small/train/history.parquet")
+        pl.scan_parquet(data_path / "train/history.parquet")
         .select(["user_id", DEFAULT_HISTORY_ARTICLE_ID_COL])
         .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(history_size))
     )
 
     df_behaviors_test = (
-        pl.scan_parquet(data_path / "ebnerd_small/train/behaviors.parquet")
+        pl.scan_parquet(data_path /"train/behaviors.parquet")
         .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
         .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
         .join(df_history, on=DEFAULT_USER_COL, how="left")
@@ -155,7 +192,7 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
     )
 
     df_behaviors_validation = (
-        pl.scan_parquet(data_path / "ebnerd_small/validation/behaviors.parquet")
+        pl.scan_parquet(data_path / "validation/behaviors.parquet")
         .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
         .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
         .join(df_history, on=DEFAULT_USER_COL, how="left")
@@ -181,7 +218,7 @@ def load_test_data(data_path, title_size):
     """
     # Load and preprocess test articles
     df_articles = (
-        pl.scan_parquet(data_path / "ebnerd_testset/articles.parquet")
+        pl.scan_parquet(data_path.parent() / "ebnerd_testset/articles.parquet")
         .select(["article_id", "category"])
         .collect()
         .head(10)
@@ -193,7 +230,7 @@ def load_test_data(data_path, title_size):
 
     # Load and preprocess test user history
     df_history = (
-        pl.scan_parquet(data_path / "ebnerd_testset/test/history.parquet")
+        pl.scan_parquet(data_path.parent() / "ebnerd_testset/test/history.parquet")
         .select([DEFAULT_USER_COL, DEFAULT_HISTORY_ARTICLE_ID_COL])
         .collect()
         .head(10)
@@ -201,7 +238,7 @@ def load_test_data(data_path, title_size):
     )
 
     # Load and preprocess test behaviors
-    behaviors_path = data_path / "ebnerd_testset/test/behaviors.parquet"
+    behaviors_path = data_path.parent() / "ebnerd_testset/test/behaviors.parquet"
     behaviors_columns = pl.scan_parquet(behaviors_path).collect_schema().names()
 
     if DEFAULT_CLICKED_ARTICLES_COL not in behaviors_columns:
@@ -307,9 +344,9 @@ if __name__ == "__main__":
     torch.cuda.empty_cache()
     # Paths and constants
     BASE_PATH = Path(__file__).resolve().parent.parent
-    DATA_PATH = BASE_PATH.joinpath("data")
-    LOCAL_TOKENIZER_PATH = DATA_PATH.joinpath("local-tokenizer")
-    LOCAL_MODEL_PATH = DATA_PATH.joinpath("local-tokenizer-model")
+    DATA_PATH = BASE_PATH.joinpath("data").joinpath(dataset_name)
+    LOCAL_TOKENIZER_PATH = BASE_PATH.joinpath("data").joinpath("local-tokenizer")
+    LOCAL_MODEL_PATH = BASE_PATH.joinpath("data").joinpath("local-tokenizer-model")
     BATCH_SIZE = 16
     N_SAMPLES = "n"
     #TODO: implement padding for history so we can history size bigger than 1
