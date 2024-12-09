@@ -40,10 +40,15 @@ if not args.debug:
     if api_token is None:
         raise ValueError("Neptune API token not found. Please set the 'NEPTUNE_API_TOKEN' environment variable.")
 
+
     run = neptune.init_project(
         project="Deep-learning-project/model-training",  # Replace with your project name
         api_token=api_token,
     )
+
+    run = neptune.init_run()
+
+    print("neptune intialized")
 else:
     print("Debug mode: Neptune logging is disabled.")
 
