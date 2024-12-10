@@ -123,7 +123,7 @@ def validate_model(val_dataloader, model, criterion, device):
             preds, _ = model(his_input_title, pred_input_title)
 
             # Apply softmax if outputs are logits
-            preds = torch.softmax(preds, dim=1)
+            #preds = torch.softmax(preds, dim=1)
 
             loss = criterion(preds, labels)
 
