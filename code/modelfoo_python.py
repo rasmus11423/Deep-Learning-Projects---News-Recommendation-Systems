@@ -406,7 +406,7 @@ if __name__ == "__main__":
     print(f"Selected device: {device}")
     model.to(device)
 
-    lr = 0.01
+    lr = 0.1
 
     # Set up optimizer and loss function
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5) # with added weight decay
