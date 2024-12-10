@@ -350,7 +350,7 @@ if __name__ == "__main__":
     DATA_PATH = BASE_PATH.joinpath("data").joinpath(dataset_name)
     LOCAL_TOKENIZER_PATH = BASE_PATH.joinpath("data").joinpath("local-tokenizer")
     LOCAL_MODEL_PATH = BASE_PATH.joinpath("data").joinpath("local-tokenizer-model")
-    BATCH_SIZE = 32
+    BATCH_SIZE = 16
     N_SAMPLES = "n"
     #TODO: implement padding for history so we can history size bigger than 1
     title_size, embedding_dim, history_size = 30, 768, 1
@@ -406,7 +406,7 @@ if __name__ == "__main__":
     print(f"Selected device: {device}")
     model.to(device)
 
-    lr = 0.1
+    lr = 0.01
 
     # Set up optimizer and loss function
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5) # with added weight decay
