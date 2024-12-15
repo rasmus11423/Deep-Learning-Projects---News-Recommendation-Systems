@@ -10,6 +10,7 @@ import argparse
 import neptune
 import os
 from tqdm import tqdm
+from models.evaluation import auc_score_custom
 from models.dataloader_pytorch import NRMSDataLoader
 from models.nrms_pytorch import NRMSModel, UserEncoder, NewsEncoder
 from utils._behaviors import create_binary_labels_column
@@ -53,9 +54,10 @@ else:
 def train_model(train_dataloader, model, criterion, optimizer, device):
     model.train()
     train_loss, correct, total = 0.0, 0, 0
-    for (his_input_title, pred_input_title), labels in train_dataloader:
-        #print(f"his_input_title:  {his_input_title.shape}")
+    all_preds = []
+    all_labels = []
 
+    for (his_input_title, pred_input_title), labels in train_dataloader:
         # Remove unnecessary singleton dimension
         his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
         pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
@@ -78,18 +80,29 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
         correct += (torch.max(preds, 1)[1] == labels).sum().item()
         total += labels.size(0)
 
+        # Store predictions and labels for AUC calculation
+        all_preds.extend(preds.softmax(dim=1)[:, 1].detach().cpu().numpy())  # Assuming positive class is at index 1
+        all_labels.extend(labels.cpu().numpy())
+
     train_acc = correct / total
 
+    # Convert to NumPy arrays for the custom AUC function
+    all_preds = np.array(all_preds)
+    all_labels = np.array(all_labels)
+
+    # Calculate AUC score using the custom implementation
+    try:
+        train_auc = auc_score_custom(all_labels, all_preds)
+    except Exception as e:
+        train_auc = float('nan')  # Handle potential errors gracefully
+        print(f"AUC calculation failed: {e}")
+
     if not args.debug:
-        run["train/loss"].log(loss.item())
+        run["train/loss"].log(train_loss / len(train_dataloader))
         run["train/accuracy"].log(train_acc)
+        run["train/auc"].log(train_auc)
 
-    
-
-    # print(f"Debug: his_input_title shape: {his_input_title.shape}")  # Expecting [batch_size, history_size, title_size]
-    # print(f"Debug: pred_input_title shape: {pred_input_title.shape}")  # Expecting [batch_size, npratio, title_size]
-
-    return train_loss, train_acc
+    return train_loss, train_acc, train_auc
 
 # 
 
@@ -424,8 +437,8 @@ if __name__ == "__main__":
     for epoch in range(epochs):
         # Train the model
         with tqdm(train_loader, desc=f"Training Epoch {epoch + 1}") as pbar:
-            train_loss, train_acc = train_model(pbar, model, criterion, optimizer, device)
-        print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}")
+            train_loss, train_acc, train_auc = train_model(pbar, model, criterion, optimizer, device)
+        print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}, Train Auc = {train_auc:.4f}")
 
         # Validate the model
         with tqdm(val_loader, desc=f"Validation Epoch {epoch + 1}") as pbar:
