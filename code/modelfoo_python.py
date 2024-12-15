@@ -112,6 +112,8 @@ def validate_model(val_dataloader, model, criterion, device):
     """
     model.eval()
     val_loss, correct, total = 0.0, 0, 0
+    all_preds = []
+    all_labels = []
 
     with torch.no_grad():
         for batch in val_dataloader:
@@ -145,13 +147,31 @@ def validate_model(val_dataloader, model, criterion, device):
             correct += (torch.max(preds, 1)[1] == labels).sum().item()
             total += labels.size(0)
 
+            # Store predictions and labels for AUC calculation
+            all_preds.extend(preds[:, 1].detach().cpu().numpy())  # Assuming positive class is at index 1
+            all_labels.extend(labels.cpu().numpy())
+
+    # Compute validation metrics
     val_acc = correct / total if total > 0 else 0
     val_loss /= len(val_dataloader)
+
+    # Convert to NumPy arrays for the custom AUC function
+    all_preds = np.array(all_preds)
+    all_labels = np.array(all_labels)
+
+    # Calculate AUC score using the custom implementation
+    try:
+        val_auc = auc_score_custom(all_labels, all_preds)
+    except Exception as e:
+        val_auc = float('nan')  # Handle potential errors gracefully
+        print(f"AUC calculation failed: {e}")
 
     if not args.debug:
         run["validation/loss"].log(val_loss)
         run["validation/accuracy"].log(val_acc)
-    return val_loss, val_acc
+        run["validation/auc"].log(val_auc)
+
+    return val_loss, val_acc, val_auc
 
 
 
@@ -442,8 +462,8 @@ if __name__ == "__main__":
 
         # Validate the model
         with tqdm(val_loader, desc=f"Validation Epoch {epoch + 1}") as pbar:
-            val_loss, val_acc = validate_model(pbar, model, criterion, device)
-        print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}")
+            val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device)
+        print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
 
 
 
