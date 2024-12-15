@@ -56,15 +56,21 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
     for (his_input_title, pred_input_title), labels in train_dataloader:
         #print(f"his_input_title:  {his_input_title.shape}")
 
-        # Remove unnecessary singleton dimension
-        his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
-        pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
-        labels = labels.squeeze(1)  # shape: [batch_size, npratio]
+        if his_input_title.ndim == 4:
+            his_input_title = his_input_title.squeeze(1)
+        if pred_input_title.ndim == 4:
+            pred_input_title = pred_input_title.squeeze(1)
+        if labels.ndim == 3:
+            labels = labels.squeeze(1)
+
 
         # Move data to the target device
         his_input_title = his_input_title.to(device)
         pred_input_title = pred_input_title.to(device)
-        labels = labels.argmax(dim=1).to(device)
+        if labels.ndim > 1:
+            labels = labels.argmax(dim=1)
+        labels = labels.to(device)
+
 
         # Zero gradients, forward pass, compute loss, backpropagate, and update weights
         optimizer.zero_grad()
@@ -78,20 +84,17 @@ def train_model(train_dataloader, model, criterion, optimizer, device):
         correct += (torch.max(preds, 1)[1] == labels).sum().item()
         total += labels.size(0)
 
+
     train_acc = correct / total
 
     if not args.debug:
         run["train/loss"].log(loss.item())
         run["train/accuracy"].log(train_acc)
 
-    
+    print(f"History size in dataloader: {his_input_title.shape}, NPRatio: {pred_input_title.shape}")
 
-    # print(f"Debug: his_input_title shape: {his_input_title.shape}")  # Expecting [batch_size, history_size, title_size]
-    # print(f"Debug: pred_input_title shape: {pred_input_title.shape}")  # Expecting [batch_size, npratio, title_size]
 
     return train_loss, train_acc
-
-# 
 
 def validate_model(val_dataloader, model, criterion, device):
     """
@@ -140,9 +143,7 @@ def validate_model(val_dataloader, model, criterion, device):
         run["validation/accuracy"].log(val_acc)
     return val_loss, val_acc
 
-
-
-def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path, model_path):
+def load_data(data_path, title_size, history_size, tokenizer_path, model_path):
 
     TEXT_COLUMNS_TO_USE = ["article_id", "category", "sentiment_label"]
 
@@ -154,8 +155,7 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
     # Initialize word embeddings
 
     word2vec_embedding = get_transformers_word_embeddings(transformer_model)
-    assert word2vec_embedding.shape[1] == embedding_dim, \
-    f"Expected embedding_dim={embedding_dim}, but got {word2vec_embedding.shape[1]}"
+    
 
 
     print("Tokenizer loaded sucessfully")
@@ -184,7 +184,9 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
         .select(["user_id", DEFAULT_HISTORY_ARTICLE_ID_COL])
         .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(history_size))
     )
+    
 
+    #print(f"Before join: df_history shape: {df_history.shape}")
     df_behaviors_test = (
         pl.scan_parquet(data_path /"train/behaviors.parquet")
         .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
@@ -193,6 +195,8 @@ def load_data(data_path, title_size, embedding_dim, history_size, tokenizer_path
         .collect()
         .pipe(create_binary_labels_column)
     )
+    #print(f"After join: df_behaviors_train shape: {df_behaviors_test.shape}")
+
 
     df_behaviors_validation = (
         pl.scan_parquet(data_path / "validation/behaviors.parquet")
@@ -272,7 +276,7 @@ def load_test_data(data_path, title_size):
     article_mapping = create_article_id_to_value_mapping(df=df_articles, value_col="tokens")
     return df_behaviors, article_mapping
 
-def initialize_model(word2vec_embedding, title_size, embedding_dim, history_size, head_num, head_dim, attention_hidden_dim, dropout):
+def initialize_model(word2vec_embedding, title_size, history_size, head_num, head_dim, attention_hidden_dim, dropout):
     """
     Initialize the NRMS model with correct embedding dimension and consistent architecture.
     """
@@ -282,7 +286,6 @@ def initialize_model(word2vec_embedding, title_size, embedding_dim, history_size
     news_encoder = NewsEncoder(
         word2vec_embedding=word2vec_embedding,
         title_size=title_size,
-        embedding_dim=embedding_dim,  # Use dynamic embedding_dim
         dropout=dropout,
         head_num=head_num,
         head_dim=head_dim,
@@ -293,7 +296,6 @@ def initialize_model(word2vec_embedding, title_size, embedding_dim, history_size
     user_encoder = UserEncoder(
         titleencoder=news_encoder,
         history_size=history_size,
-        embedding_dim=embedding_dim,  # Use dynamic embedding_dim
         head_num=head_num,
         head_dim=head_dim,
         attention_hidden_dim=attention_hidden_dim,
@@ -303,7 +305,6 @@ def initialize_model(word2vec_embedding, title_size, embedding_dim, history_size
     model = NRMSModel(
         user_encoder=user_encoder,
         news_encoder=news_encoder,
-        embedding_dim=embedding_dim,  # Use dynamic embedding_dim
     )
 
     print("Model initialized with the following architecture:")
@@ -350,15 +351,16 @@ if __name__ == "__main__":
     DATA_PATH = BASE_PATH.joinpath("data").joinpath(dataset_name)
     LOCAL_TOKENIZER_PATH = BASE_PATH.joinpath("data").joinpath("local-tokenizer")
     LOCAL_MODEL_PATH = BASE_PATH.joinpath("data").joinpath("local-tokenizer-model")
-    BATCH_SIZE = 16
-    N_SAMPLES = "n"
+    BATCH_SIZE = 32
+    N_SAMPLES = "n" # 1 postive 4 negative, so batchsize adabs to change 16 * npratio = 16 * 5 = 80
+    
     #TODO: implement padding for history so we can history size bigger than 1
-    title_size, embedding_dim, history_size = 30, 768, 1
-    head_num, head_dim, attention_hidden_dim, dropout = 8, 16, 200, 0.2
+    title_size, history_size = 30, 1
+    head_num, head_dim, attention_hidden_dim, dropout = 20, 20, 200, 0.2
 
     # Load data
     df_behaviors_train, df_behaviors_validation, article_mapping, word2vec_embedding = load_data(
-        DATA_PATH, title_size, embedding_dim, history_size, LOCAL_TOKENIZER_PATH, LOCAL_MODEL_PATH
+        DATA_PATH, title_size, history_size, LOCAL_TOKENIZER_PATH, LOCAL_MODEL_PATH
     )
 
     print("we now have data and tokenizer")
@@ -375,7 +377,7 @@ if __name__ == "__main__":
         history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         unknown_representation="zeros",
         eval_mode=False,
-        batch_size=BATCH_SIZE,
+        batch_size=BATCH_SIZE,  # Ensure this matches 16
     )
 
     val_dataloader = NRMSDataLoader(
@@ -389,15 +391,17 @@ if __name__ == "__main__":
 
     # Wrap in PyTorch DataLoader
     train_loader = DataLoader(train_dataloader, batch_size=BATCH_SIZE, shuffle=True)
+    print(f"Expected Train Loader Batch Size: {BATCH_SIZE}")
+    print(f"Actual Train Loader Batch Size: {len(next(iter(train_loader))[0][0])}")
+
     val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False)
 
     
     print("Dataloder for train/val successful")
 
 
-    print(f"Initializing model with embedding_dim={embedding_dim}")
     model = initialize_model(
-        word2vec_embedding, title_size, embedding_dim, history_size, head_num, head_dim, attention_hidden_dim, dropout
+        word2vec_embedding, title_size, history_size, head_num, head_dim, attention_hidden_dim, dropout
     )
     print(f"Loaded word2vec embedding shape: {word2vec_embedding.shape}")
 
