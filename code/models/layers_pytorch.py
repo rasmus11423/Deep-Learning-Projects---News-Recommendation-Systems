@@ -23,7 +23,7 @@ class AttLayer2(nn.Module):
         self.dim = dim
         torch.manual_seed(seed)
 
-    def build(self, input_dim,device):
+    def build(self, input_dim, device):
         """
         Initialize the weights of the attention layer.
 
@@ -78,20 +78,14 @@ class SelfAttention(nn.Module):
         super(SelfAttention, self).__init__()
         self.multiheads = multiheads
         self.head_dim = head_dim
-        self.output_dim = multiheads * head_dim
+        self.output_dim = None  # Set dynamically later
+        self.WQ, self.WK, self.WV = None, None, None
         self.mask_right = mask_right
         torch.manual_seed(seed)
 
-        print(f"[DEBUG] Multiheads={self.multiheads}, Head Dim={self.head_dim}, Expected Output Dim={self.output_dim}")
-
-        # Placeholder weights; dimensions will be defined during build
-        self.WQ = None
-        self.WK = None
-        self.WV = None
-
     def build(self, input_dim, device):
-        if input_dim != self.output_dim:
-            raise ValueError(f"Input dim mismatch: Expected {self.output_dim}, but got {input_dim}")
+        
+        self.output_dim = self.multiheads * self.head_dim
         
         """
         Initialize the weights for query, key, and value transformations.
@@ -161,14 +155,18 @@ class SelfAttention(nn.Module):
 
         # Move Q, K, V to the same device as the weights
         Q, K, V = Q.to(device), K.to(device), V.to(device)
+        #print(f"Q matrix before linear transform : {Q.shape}")
 
         # Linear transformations for Q, K, V
         Q = torch.matmul(Q, self.WQ).view(Q.size(0), Q.size(1), self.multiheads, self.head_dim).permute(0, 2, 1, 3)
         K = torch.matmul(K, self.WK).view(K.size(0), K.size(1), self.multiheads, self.head_dim).permute(0, 2, 1, 3)
         V = torch.matmul(V, self.WV).view(V.size(0), V.size(1), self.multiheads, self.head_dim).permute(0, 2, 1, 3)
+        #print(f"Q matrix shape: {Q.shape}") # Q matrix shape: torch.Size([16, 6, 30, 128])
+
 
         # Scaled dot-product attention
         scores = torch.matmul(Q, K.transpose(-2, -1)) / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32, device=device))
+        #print(f"Scaled dot-product attention: {scores.shape}") # Scaled dot-product attention: torch.Size([16, 8, 1, 1])
 
         # Masking
         if self.mask_right:
@@ -182,6 +180,7 @@ class SelfAttention(nn.Module):
 
         # Weighted sum of value vectors
         output = torch.matmul(attention_weights, V)  # (batch_size, multiheads, seq_len, head_dim)
+        #print(f"Self-Attention before concatenate Output Shape: {output.shape}")
 
         # Concatenate multiple heads
         output = output.permute(0, 2, 1, 3).contiguous().view(output.size(0), -1, self.output_dim)
