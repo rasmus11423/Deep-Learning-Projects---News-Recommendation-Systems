@@ -20,10 +20,9 @@ from utils._python import (
     create_lookup_objects,
 )
 
-
 class NewsrecDataLoader(Dataset):
     """
-    A PyTorch-compatible DataLoader for news recommendation.
+    A PyTorch-compatible DataLoader for news recommendation with batch size tracking.
     """
 
     def __init__(
@@ -33,11 +32,12 @@ class NewsrecDataLoader(Dataset):
         article_dict: dict[int, any],
         unknown_representation: str,
         eval_mode: bool = False,
-        batch_size: int = 32,
+        batch_size: int = None,
         inview_col: str = DEFAULT_INVIEW_ARTICLES_COL,
         labels_col: str = DEFAULT_LABELS_COL,
         user_col: str = DEFAULT_USER_COL,
-        kwargs: dict = None
+        npratio: int = 4,  # Default npratio value
+        kwargs: dict = None,
     ):
         self.behaviors = behaviors
         self.history_column = history_column
@@ -48,18 +48,13 @@ class NewsrecDataLoader(Dataset):
         self.inview_col = inview_col
         self.labels_col = labels_col
         self.user_col = user_col
+        self.npratio = npratio
         self.kwargs = kwargs or {}
-
-        # Debug: Check article_dict size
-        #print(f"Debug: article_dict size = {len(article_dict)}")
 
         # Create lookup objects
         self.lookup_article_index, self.lookup_article_matrix = create_lookup_objects(
             self.article_dict, unknown_representation=self.unknown_representation
         )
-
-        # Debug: Check embedding matrix dimensions
-        #print(f"Debug: lookup_article_matrix shape = {self.lookup_article_matrix.shape}")
 
         self.unknown_index = [0]
         self.X, self.y = self.load_data()
@@ -108,15 +103,12 @@ class NewsrecDataLoader(Dataset):
         # Convert to PyTorch tensors
         return (torch.tensor(his_input_title), torch.tensor(pred_input_title)), torch.tensor(batch_y)
 
+
     def load_data(self) -> tuple[pl.DataFrame, pl.DataFrame]:
-        #print("Debug: Loading Data")
         X = self.behaviors.drop(self.labels_col).with_columns(
             pl.col(self.inview_col).list.len().alias("n_samples")
         )
         y = self.behaviors[self.labels_col]
-
-        # Debug: Check loaded data shapes
-        #print(f"Debug: Loaded Data X shape = {X.shape}, y shape = {y.shape}")
         return X, y
 
     def set_kwargs(self, kwargs: dict):
@@ -132,10 +124,11 @@ class NRMSDataLoader(NewsrecDataLoader):
         article_dict: dict[int, any],
         unknown_representation: str,
         eval_mode: bool = False,
-        batch_size: int = 32,
+        batch_size: int = None,
         inview_col: str = DEFAULT_INVIEW_ARTICLES_COL,
         labels_col: str = DEFAULT_LABELS_COL,
         user_col: str = DEFAULT_USER_COL,
+        npratio: int = 4,  # Default npratio value
         kwargs: dict = None,
     ):
         super().__init__(
@@ -148,6 +141,7 @@ class NRMSDataLoader(NewsrecDataLoader):
             inview_col=inview_col,
             labels_col=labels_col,
             user_col=user_col,
+            npratio=npratio,
             kwargs=kwargs,
         )
 
@@ -166,6 +160,4 @@ class NRMSDataLoader(NewsrecDataLoader):
             drop_nulls=False,
         )
 
-        # Debug: Check the transformed DataFrame
-        #print(f"Debug: Transformed DataFrame (head):\n{transformed_df.head(1)}")
         return transformed_df
