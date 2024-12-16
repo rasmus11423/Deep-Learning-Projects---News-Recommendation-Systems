@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, default_collate
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
 from pathlib import Path
@@ -384,6 +384,42 @@ def evaluate_model(test_loader, model, device):
     print(f"Test Accuracy: {accuracy:.4f}")
     return accuracy
 
+def custom_collate_fn_train(batch, history_len):
+    padded_batch = []
+    #print(batch)
+
+    for (history, prediction), labels in batch:
+        #print(f"Original history shape: {history.shape}")
+        history_padded = torch.zeros((1, history_len, history.size(-1)))
+        history_padded[0, :min(history.size(1), history_len)] = history[0, :history_len]
+        #print(f"Padded history shape: {history_padded.shape}")
+        padded_batch.append(((history_padded, prediction), labels))
+
+    return default_collate(padded_batch)
+
+# def custom_collate_fn_validation(batch, history_len):
+#     padded_batch = []
+
+#     for (history, prediction), labels in batch:
+#         print(f"Original history shape (Validation): {history.shape}")
+
+#         # Ensure correct dimensions for padding
+#         batch_size, current_len, feature_size = history.shape
+#         history_padded = torch.zeros((batch_size, history_len, feature_size))
+
+#         # Correctly copy data into the padded history
+#         max_len = min(current_len, history_len)
+#         history_padded[:, :max_len, :] = history[:, :max_len, :]
+
+#         print(f"Padded history shape (Validation): {history_padded.shape}")
+
+#         padded_batch.append(((history_padded, prediction), labels))
+
+#     return default_collate(padded_batch)
+
+
+
+
 # Main Script
 if __name__ == "__main__":
     torch.cuda.empty_cache()
@@ -396,7 +432,7 @@ if __name__ == "__main__":
     N_SAMPLES = "n" # 1 postive 4 negative, so batchsize adabs to change 16 * npratio = 16 * 5 = 80
     
     #TODO: implement padding for history so we can history size bigger than 1
-    title_size, history_size = 30, 1
+    title_size, history_size = 30, 30
     head_num, head_dim, attention_hidden_dim, dropout = 20, 20, 200, 0.2
 
     # Load data
@@ -431,13 +467,16 @@ if __name__ == "__main__":
     )
 
     # Wrap in PyTorch DataLoader
-    train_loader = DataLoader(train_dataloader, batch_size=BATCH_SIZE, shuffle=True)
+    train_loader = DataLoader(
+        train_dataloader, batch_size=BATCH_SIZE, shuffle=True, collate_fn=lambda x: custom_collate_fn_train(x, history_size)
+    )
+
     print(f"Expected Train Loader Batch Size: {BATCH_SIZE}")
     print(f"Actual Train Loader Batch Size: {len(next(iter(train_loader))[0][0])}")
-
     val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False)
 
-    
+    # val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False, collate_fn=lambda x: custom_collate_fn_validation(x, history_size)
+    # )
     print("Dataloder for train/val successful")
 
 
@@ -472,10 +511,10 @@ if __name__ == "__main__":
             train_loss, train_acc, train_auc = train_model(pbar, model, criterion, optimizer, device)
         print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}, Train Auc = {train_auc:.4f}")
 
-        # Validate the model
-        with tqdm(val_loader, desc=f"Validation Epoch {epoch + 1}") as pbar:
-            val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device)
-        print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
+        # # Validate the model
+        # with tqdm(val_loader, desc=f"Validation Epoch {epoch + 1}") as pbar:
+        #     val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device)
+        # print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
 
 
 
@@ -497,55 +536,3 @@ if not args.debug:
     run.stop()
 
 print("Done")
-
-
-
-# def validate_model(val_dataloader, model, criterion, device):
-#     """
-#     Validate the model with improved accuracy handling and debugging.
-#     """
-#     model.eval()
-#     val_loss, correct, total = 0.0, 0, 0
-
-#     with torch.no_grad():
-#         for batch_idx, (his_input_title, pred_input_title), labels in enumerate(val_dataloader):
-#             # Log initial shapes for debugging
-#             print(f"Batch {batch_idx}:")
-#             print(f"Initial his_input_title shape: {his_input_title.shape}")
-#             print(f"Initial pred_input_title shape: {pred_input_title.shape}")
-#             print(f"Initial labels shape: {labels.shape}")
-
-#             # Adjust shapes safely
-#             if his_input_title.ndim > 3 and his_input_title.size(2) == 1:
-#                 his_input_title = his_input_title.squeeze(2)
-#             if pred_input_title.ndim > 3 and pred_input_title.size(2) == 1:
-#                 pred_input_title = pred_input_title.squeeze(2)
-#             if labels.ndim > 2 and labels.size(-1) == 1:
-#                 labels = labels.squeeze(-1)
-
-#             # Convert labels to device and ensure compatibility
-#             labels = labels.argmax(dim=1).to(device)
-
-#             # Move inputs to device
-#             his_input_title = his_input_title.to(device)
-#             pred_input_title = pred_input_title.to(device)
-
-#             # Forward pass
-#             preds, _ = model(his_input_title, pred_input_title)
-
-#             # Apply softmax if outputs are logits
-#             preds = torch.softmax(preds, dim=1)
-
-#             # Compute loss
-#             loss = criterion(preds, labels)
-#             val_loss += loss.item()
-
-#             # Compute accuracy
-#             predicted_classes = preds.argmax(dim=1)
-#             correct += (predicted_classes == labels).sum().item()
-#             total += labels.size(0)
-
-#     val_loss /= len(val_dataloader)
-#     val_acc = correct / total if total > 0 else 0
-#     print(f"Validation Accuracy: {val_acc:.4f}")
-#     return val_loss, val_acc
