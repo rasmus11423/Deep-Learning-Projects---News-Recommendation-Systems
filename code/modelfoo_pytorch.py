@@ -43,6 +43,7 @@ if not args.debug:
 
     print("neptune intialized")
 else:
+    run = ""
     print("Debug mode: Neptune logging is disabled.")
 
 # set parameters 
@@ -63,11 +64,6 @@ df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE)
 
 print("Grabbing articles and embeddings")
 article_mapping, word2vec_embedding = grab_embeded_articles(LOCAL_TOKENIZER_PATH,LOCAL_MODEL_PATH,dataset_name, title_size)
-
-# Initialize dataloaders
-# Prepare Train and Validation Sets
-df_train = df_train.head(4*BATCH_SIZE)
-df_validation = df_validation.head(2*BATCH_SIZE)
 
 
 # Initialize Dataloaders
@@ -120,13 +116,16 @@ epochs = 4
 for epoch in range(epochs):
     # Train the model
     with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
-        if not args.debug:
             train_loss, train_acc, train_auc = train_model(pbar, model, criterion, optimizer, device, args, run)
-        else: 
-            train_loss, train_acc, train_auc = train_model(pbar, model, criterion, optimizer, device, args)
     print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}, Train Auc = {train_auc:.4f}")
 
     # Validate the model
     with tqdm(val_dataloader, desc=f"Validation Epoch {epoch + 1}") as pbar:
-        val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device)
+            val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device,args, run)
+
     print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
+
+if not args.debug:
+    run.stop()
+
+print("Done")

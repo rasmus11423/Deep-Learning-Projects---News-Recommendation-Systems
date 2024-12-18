@@ -163,7 +163,7 @@ def initialize_model(word2vec_embedding, title_size, history_size, head_num, hea
 
     return model
 
-def train_model(train_dataloader, model, criterion, optimizer, device,args,*run):
+def train_model(train_dataloader, model, criterion, optimizer, device,args,run):
     model.train()
     train_loss, correct, total = 0.0, 0, 0
     all_preds = []
@@ -219,8 +219,9 @@ def train_model(train_dataloader, model, criterion, optimizer, device,args,*run)
         train_auc = float('nan')  # Handle potential errors gracefully
         print(f"AUC calculation failed: {e}")
 
+    train_loss /= len(train_dataloader)
     if not args.debug:
-        run["train/loss"].log(train_loss / len(train_dataloader))
+        run["train/loss"].log(train_loss)
         run["train/accuracy"].log(train_acc)
         run["train/auc"].log(train_auc)
     
@@ -229,7 +230,7 @@ def train_model(train_dataloader, model, criterion, optimizer, device,args,*run)
     return train_loss, train_acc, train_auc
 
 
-def validate_model(val_dataloader, model, criterion, device):
+def validate_model(val_dataloader, model, criterion, device, args, run):
     model.eval()
     val_loss, val_correct, val_total = 0.0, 0, 0
     all_preds, all_labels = [], []
@@ -247,14 +248,8 @@ def validate_model(val_dataloader, model, criterion, device):
             # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
 
-            # Debug: Print shapes and values
-            print(f"Batch {batch_idx} Preds Shape: {preds.shape}, Labels Shape: {labels.shape}")
-            print(f"Batch {batch_idx} Preds: {preds[:5]}")
-            print(f"Batch {batch_idx} Labels: {labels[:5]}")
-
             # Compute loss
             loss = criterion(preds.view(-1), labels)
-            print(f"Batch {batch_idx} Loss: {loss.item()}")
 
             # Record loss
             val_loss += loss.item()
@@ -280,6 +275,11 @@ def validate_model(val_dataloader, model, criterion, device):
     except Exception as e:
         val_auc = float('nan')
         print(f"[ERROR] AUC Calculation Failed: {e}")
+
+    if not args.debug:
+        run["validation/loss"].log(val_loss)
+        run["validationrain/accuracy"].log(val_acc)
+        run["tvalidationain/auc"].log(val_auc)
 
     return val_loss, val_acc, val_auc
 
