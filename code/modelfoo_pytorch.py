@@ -10,11 +10,7 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 from models.data_helper import grab_data,grab_embeded_articles,initialize_model,train_model,validate_model
 from utils._constants import (
-    DEFAULT_HISTORY_ARTICLE_ID_COL,
-    DEFAULT_CLICKED_ARTICLES_COL,
-    DEFAULT_INVIEW_ARTICLES_COL,
-    DEFAULT_USER_COL,
-    DEFAULT_IMPRESSION_ID_COL
+    DEFAULT_HISTORY_ARTICLE_ID_COL
 )
 
 
@@ -48,7 +44,7 @@ else:
 
 # set parameters 
 HISTORY_SIZE = 20
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 title_size, history_size = 30, 30
 head_num, head_dim, attention_hidden_dim, dropout = 20, 20, 200, 0.2
 
@@ -61,6 +57,7 @@ LOCAL_MODEL_PATH = BASE_PATH.joinpath("data/local-tokenizer-model")
 print("Grabbing train and validation set.")
 
 df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE)
+
 
 print("Grabbing articles and embeddings")
 article_mapping, word2vec_embedding = grab_embeded_articles(LOCAL_TOKENIZER_PATH,LOCAL_MODEL_PATH,dataset_name, title_size)
@@ -99,13 +96,13 @@ print(f"Selected device: {device}")
 model.to(device)
 
 # Set up optimizer and loss function
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5) # with added weight decay
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5) # with added weight decay
 criterion = nn.CrossEntropyLoss()
 
 if not args.debug:
     params = {
         "optimizer": "Adam",
-        "learning_rate":0.01,
+        "learning_rate":0.001,
         "dataset": dataset_name,
         "batchsize": BATCH_SIZE
         }
