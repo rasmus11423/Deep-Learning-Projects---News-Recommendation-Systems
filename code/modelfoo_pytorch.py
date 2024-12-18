@@ -12,7 +12,7 @@ from models.data_helper import grab_data,grab_embeded_articles,initialize_model,
 from utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL
 )
-
+torch.cuda.empty_cache()
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Train a model with optional Neptune logging.")
@@ -126,3 +126,4 @@ if not args.debug:
     run.stop()
 
 print("Done")
+torch.cuda.empty_cache()
