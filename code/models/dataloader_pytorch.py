@@ -61,11 +61,16 @@ class NewsrecDataLoader(Dataset):
         self.set_kwargs(self.kwargs)
 
     def __len__(self) -> int:
-        return len(self.X)
+        return len(self.X) // self.batch_size
 
     def __getitem__(self, idx: int) -> tuple[tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
-        batch_X = self.X[idx:idx + 1].pipe(self.transform)
-        batch_y = self.y[idx:idx + 1]
+        # Calculate start and end indices for the batch
+        start_idx = idx * self.batch_size
+        end_idx = start_idx + self.batch_size
+
+        # Select the batch data
+        batch_X = self.X[start_idx:end_idx].pipe(self.transform)
+        batch_y = self.y[start_idx:end_idx]
 
         if self.eval_mode:
             repeats = np.array(batch_X["n_samples"])
@@ -87,21 +92,15 @@ class NewsrecDataLoader(Dataset):
                 batch_X[self.inview_col].to_list()
             ]
 
-            # Debug: Check matrix shapes before squeeze
-            # print(f"Debug: his_input_title before squeeze = {his_input_title.shape}")
-            # print(f"Debug: pred_input_title before squeeze = {pred_input_title.shape}")
-
             pred_input_title = np.squeeze(pred_input_title, axis=2)
 
         his_input_title = np.squeeze(his_input_title, axis=2)
 
-        # Debug: Check the final shapes of inputs
-        # print(f"Debug: his_input_title final shape = {his_input_title.shape}")
-        # print(f"Debug: pred_input_title final shape = {pred_input_title.shape}")
-        # print(f"Debug: batch_y final shape = {batch_y.shape}")
-
         # Convert to PyTorch tensors
-        return (torch.tensor(his_input_title), torch.tensor(pred_input_title)), torch.tensor(batch_y)
+        return (torch.tensor(his_input_title, dtype=torch.float32), 
+                torch.tensor(pred_input_title, dtype=torch.float32)), \
+            torch.tensor(batch_y, dtype=torch.float32)
+
 
 
     def load_data(self) -> tuple[pl.DataFrame, pl.DataFrame]:
