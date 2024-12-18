@@ -47,7 +47,7 @@ for gpu in gpus:
 physical_devices = tf.config.list_physical_devices()
 print("Available devices:", physical_devices)
 
-def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
+def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.LazyFrame:
     """
     Load ebnerd - function
     """
@@ -61,7 +61,7 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
             padding_value=0,
             enable_warning=False,
         )
-    )
+    ).lazy()
 
     df_behaviors = (
         pl.scan_parquet(path.joinpath("behaviors.parquet"))

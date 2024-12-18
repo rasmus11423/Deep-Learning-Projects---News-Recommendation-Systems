@@ -13,15 +13,16 @@ from tqdm import tqdm
 from models.evaluation import auc_score_custom
 from models.dataloader_pytorch import NRMSDataLoader
 from models.nrms_pytorch import NRMSModel, UserEncoder, NewsEncoder
-from utils._behaviors import create_binary_labels_column
+from utils._behaviors import create_binary_labels_column,truncate_history,sampling_strategy_wu2019
 from utils._articles import create_article_id_to_value_mapping, convert_text2encoding_with_transformers
 from utils._nlp import get_transformers_word_embeddings
-from utils._polars import concat_str_columns
+from utils._polars import concat_str_columns, slice_join_dataframes
 from utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL,
     DEFAULT_CLICKED_ARTICLES_COL,
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_USER_COL,
+    DEFAULT_IMPRESSION_ID_COL
 )
 
 # Parse command-line arguments
@@ -186,6 +187,71 @@ def validate_model(val_dataloader, model, criterion, device):
 
 def load_data(data_path, title_size, history_size, tokenizer_path, model_path):
 
+    def ebnerd_from_path(path: str, history_size: int = 30) -> pl.LazyFrame:
+        """
+        Load ebnerd - function
+        """
+
+        set_name = path+"/history.parquet"
+        history_path = data_path /set_name
+
+        df_history = (
+            pl.scan_parquet(history_path)
+            .select(DEFAULT_USER_COL, DEFAULT_HISTORY_ARTICLE_ID_COL)
+            .pipe(
+                truncate_history,
+                column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+                history_size=history_size,
+                padding_value=0,
+                enable_warning=False,
+            )
+        ).lazy()
+
+        set_name = path+"/behaviors.parquet"
+        bahoir_path = data_path /set_name
+
+        df_behaviors = (
+            pl.scan_parquet(bahoir_path)
+            .collect()
+            .pipe(
+                slice_join_dataframes,
+                df2=df_history.collect(),
+                on=DEFAULT_USER_COL,
+                how="left",
+            )
+        )
+        return df_behaviors
+
+    def load_history(path: Path, history_size: int = 30) -> pl.LazyFrame:
+        """
+        Load ebnerd - function
+        """
+        df_history = (
+            pl.scan_parquet(data_path / "train/history.parquet")
+            .select(["user_id", DEFAULT_HISTORY_ARTICLE_ID_COL])
+            .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(history_size))
+            #.select(["user_id", DEFAULT_HISTORY_ARTICLE_ID_COL])
+            # .collect()
+            .pipe(
+                truncate_history,
+                column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+                history_size=history_size,
+                padding_value=0,
+                enable_warning=False,
+            )
+        )
+
+        # df_behaviors = (
+        #     pl.scan_parquet(path.joinpath("behaviors.parquet"))
+        #     .pipe(
+        #         slice_join_dataframes,
+        #         df2=df_history.collect(),
+        #         on=DEFAULT_USER_COL,
+        #         how="left",
+        #     )
+        # )
+        return df_history
+
     TEXT_COLUMNS_TO_USE = ["article_id", "category", "sentiment_label"]
 
     print("Loading articles and generating embeddings...")
@@ -220,37 +286,69 @@ def load_data(data_path, title_size, history_size, tokenizer_path, model_path):
     )
 
 
-    df_history = (
-        pl.scan_parquet(data_path / "train/history.parquet")
-        .select(["user_id", DEFAULT_HISTORY_ARTICLE_ID_COL])
-        .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(history_size))
-    )
+    # df_history = (
+    #     load_history( data_path /"train/behaviors.parquet" , history_size=history_size)
+    #     #pl.scan_parquet(data_path / "train/history.parquet")
+    #     #.select(["user_id", DEFAULT_HISTORY_ARTICLE_ID_COL])
+    #     #.with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(history_size))
+    # )
     
 
-    #print(f"Before join: df_history shape: {df_history.shape}")
-    df_behaviors_test = (
-        pl.scan_parquet(data_path /"train/behaviors.parquet")
-        .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
-        .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
-        .join(df_history, on=DEFAULT_USER_COL, how="left")
-        .collect()
+    # #print(f"Before join: df_history shape: {df_history.shape}")
+    # df_behaviors_test = (
+    #     #ebnerd_from_path( data_path /"train/behaviors.parquet" , history_size=history_size)
+    #     pl.scan_parquet(data_path /"train/behaviors.parquet")
+    #     .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
+    #     .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
+    #     .join(df_history, on=DEFAULT_USER_COL, how="left")
+    #     .collect()
+    #     .pipe(create_binary_labels_column)
+    # )
+    # #print(f"After join: df_behaviors_train shape: {df_behaviors_test.shape}")
+
+
+    # df_behaviors_validation = (
+    #     #ebnerd_from_path( data_path /"validation/behaviors.parquet" , history_size=history_size)
+    #     pl.scan_parquet(data_path / "validation/behaviors.parquet")
+    #     .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
+    #     .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
+    #     .join(df_history, on=DEFAULT_USER_COL, how="left")
+    #     .collect()
+    #     .pipe(create_binary_labels_column)
+    # )
+
+    COLUMNS = [
+        DEFAULT_USER_COL,
+        DEFAULT_HISTORY_ARTICLE_ID_COL,
+        DEFAULT_INVIEW_ARTICLES_COL,
+        DEFAULT_CLICKED_ARTICLES_COL,
+        DEFAULT_IMPRESSION_ID_COL]
+    FRACTION = 0.01
+    # Load data
+    df_train = (
+        ebnerd_from_path("train", history_size=history_size)
+        .select(COLUMNS)
+        .pipe(
+            sampling_strategy_wu2019,
+            npratio=4,
+            shuffle=True,
+            with_replacement=True,
+            seed=123,
+        )
         .pipe(create_binary_labels_column)
+        .sample(fraction=FRACTION)
     )
-    #print(f"After join: df_behaviors_train shape: {df_behaviors_test.shape}")
 
-
-    df_behaviors_validation = (
-        pl.scan_parquet(data_path / "validation/behaviors.parquet")
-        .select([DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL])
-        .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias("n"))
-        .join(df_history, on=DEFAULT_USER_COL, how="left")
-        .collect()
+    df_validation = (
+        ebnerd_from_path("validation", history_size=history_size)
+        .select(COLUMNS)
         .pipe(create_binary_labels_column)
+        .sample(fraction=FRACTION)
     )
 
     article_mapping = create_article_id_to_value_mapping(df=df_articles, value_col=token_col_title)
 
-    return df_behaviors_test, df_behaviors_validation, article_mapping, word2vec_embedding
+    return df_train, df_validation, article_mapping, word2vec_embedding
 
 def load_test_data(data_path, title_size):
     """
@@ -444,8 +542,8 @@ if __name__ == "__main__":
 
     # Initialize dataloaders
     # Prepare Train and Validation Sets
-    df_behaviors_train = df_behaviors_train.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
-    df_behaviors_validation = df_behaviors_validation.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
+    df_behaviors_train = df_behaviors_train.head(4*BATCH_SIZE)
+    df_behaviors_validation = df_behaviors_validation.head(2*BATCH_SIZE)
 
     # Initialize Dataloaders
     train_dataloader = NRMSDataLoader(
@@ -468,11 +566,11 @@ if __name__ == "__main__":
 
     # Wrap in PyTorch DataLoader
     train_loader = DataLoader(
-        train_dataloader, batch_size=BATCH_SIZE, shuffle=True, collate_fn=lambda x: custom_collate_fn_train(x, history_size)
+        train_dataloader, batch_size=BATCH_SIZE, shuffle=True
     )
 
     print(f"Expected Train Loader Batch Size: {BATCH_SIZE}")
-    print(f"Actual Train Loader Batch Size: {len(next(iter(train_loader))[0][0])}")
+    #print(f"Actual Train Loader Batch Size: {len(next(iter(train_loader))[0][0])}")
     val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False)
 
     # val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False, collate_fn=lambda x: custom_collate_fn_validation(x, history_size)
@@ -511,10 +609,10 @@ if __name__ == "__main__":
             train_loss, train_acc, train_auc = train_model(pbar, model, criterion, optimizer, device)
         print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}, Train Auc = {train_auc:.4f}")
 
-        # # Validate the model
-        # with tqdm(val_loader, desc=f"Validation Epoch {epoch + 1}") as pbar:
-        #     val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device)
-        # print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
+        # Validate the model
+        with tqdm(val_loader, desc=f"Validation Epoch {epoch + 1}") as pbar:
+            val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device)
+        print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
 
 
 
