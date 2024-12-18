@@ -112,7 +112,7 @@ if not args.debug:
     run["parameters"] = params
 
 # Training and validation loop
-epochs = 4
+epochs = 20
 for epoch in range(epochs):
     # Train the model
     with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
