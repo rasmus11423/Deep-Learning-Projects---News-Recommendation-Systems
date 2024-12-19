@@ -89,7 +89,7 @@ val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False, dr
 model = initialize_model(word2vec_embedding, title_size, HISTORY_SIZE, head_num, head_dim, attention_hidden_dim, dropout)
 
 print(f"Loaded word2vec embedding shape: {word2vec_embedding.shape}")
-lr =0.1
+lr =0.01
 weight_decay = 1e-2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -106,14 +106,14 @@ if not args.debug:
         "learning_rate":lr,
         "dataset": dataset_name,
         "batchsize": BATCH_SIZE,
-        "fraction":0.02,
+        "fraction":0.04,
         "weight_decay":weight_decay,
         "embedding": "roberta"
         }
     run["parameters"] = params
 
 # Training and validation loop
-epochs = 15
+epochs = 20
 for epoch in range(epochs):
     # Train the model
     with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
