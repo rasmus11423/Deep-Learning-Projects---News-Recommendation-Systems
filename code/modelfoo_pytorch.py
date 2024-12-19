@@ -103,10 +103,10 @@ criterion = nn.CrossEntropyLoss()
 if not args.debug:
     params = {
         "optimizer": "Adam",
-        "learning_rate":0.01,
+        "learning_rate":lr,
         "dataset": dataset_name,
         "batchsize": BATCH_SIZE,
-        "fraction":lr,
+        "fraction":0.4,
         "weight_decay":weight_decay,
         "embedding": "roberta"
         }
