@@ -245,6 +245,9 @@ def validate_model(val_dataloader, model, criterion, device, args, run):
             pred_input_title = pred_input_title.to(device)
             labels = labels.to(device).view(-1)  # Flatten labels to 1D
 
+            if torch.all(labels == 0):
+                print(f"[INFO] Batch {batch_idx} contains no 1's in labels.")
+
             # Forward pass
             preds, _ = model(his_input_title, pred_input_title)
 

@@ -5,6 +5,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from models.dataloader_pytorch import NRMSDataLoader
+import polars as pl 
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -58,6 +59,12 @@ print("Grabbing train and validation set.")
 
 df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE)
 
+df_no_ones = df_validation.filter(
+    pl.col("labels").list.sum()==0
+)
+
+# Show the filtered rows
+print(df_no_ones)
 
 print("Grabbing articles and embeddings")
 article_mapping, word2vec_embedding = grab_embeded_articles(LOCAL_TOKENIZER_PATH,LOCAL_MODEL_PATH,dataset_name, title_size)
