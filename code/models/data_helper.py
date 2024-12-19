@@ -261,7 +261,7 @@ def validate_model(val_dataloader, model, criterion, device, args, run):
             pred_labels = torch.round(torch.sigmoid(preds))
 
             # Update correct and total counts
-            val_correct += (pred_labels.view(-1) == labels).sum().item()
+            val_correct += (torch.max(preds, 1)[1] == labels).sum().item()
             val_total += labels.size(0)
 
             # Collect predictions and labels for AUC calculation
@@ -270,7 +270,7 @@ def validate_model(val_dataloader, model, criterion, device, args, run):
 
     # Compute metrics
     val_acc = val_correct / val_total if val_total > 0 else 0
-    val_loss /= len(val_dataloader) if len(val_dataloader) > 0 else float('nan')
+    val_loss /= len(val_dataloader)
 
     # Compute AUC
     try:
