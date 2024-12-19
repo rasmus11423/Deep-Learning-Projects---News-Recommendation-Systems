@@ -106,7 +106,7 @@ if not args.debug:
         "learning_rate":lr,
         "dataset": dataset_name,
         "batchsize": BATCH_SIZE,
-        "fraction":0.2,
+        "fraction":0.15,
         "weight_decay":weight_decay,
         "embedding": "roberta"
         }
