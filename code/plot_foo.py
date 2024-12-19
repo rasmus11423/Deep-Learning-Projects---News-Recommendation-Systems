@@ -58,7 +58,7 @@ def plot_metric(run_name, metric="accuracy"):
     plt.tight_layout()
 
     # Save plot to PDF in the data directory
-    output_file = DATA_PATH.joinpath(f"{metric}_plot.pdf")
+    output_file = DATA_PATH.joinpath(f"{metric}_plot_"+run_name+".pdf")
     plt.savefig(output_file, format="pdf", bbox_inches="tight")
 
     # Show the plot
@@ -66,4 +66,4 @@ def plot_metric(run_name, metric="accuracy"):
 
     print(f"Plot saved to {output_file}")
 
-plot_metric("run_18","auc")
+plot_metric("run_40","auc")
