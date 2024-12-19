@@ -89,8 +89,8 @@ val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False, dr
 model = initialize_model(word2vec_embedding, title_size, HISTORY_SIZE, head_num, head_dim, attention_hidden_dim, dropout)
 
 print(f"Loaded word2vec embedding shape: {word2vec_embedding.shape}")
-lr =0.01
-weight_decay = 1e-5
+lr =0.1
+weight_decay = 1e-2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Selected device: {device}")
@@ -106,7 +106,7 @@ if not args.debug:
         "learning_rate":lr,
         "dataset": dataset_name,
         "batchsize": BATCH_SIZE,
-        "fraction":0.01,
+        "fraction":0.02,
         "weight_decay":weight_decay,
         "embedding": "roberta"
         }

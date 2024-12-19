@@ -68,7 +68,7 @@ def grab_data(dataset_name,HISTORY_SIZE):
     TRAIN_PATH = DATA_PATH.joinpath("train")
     VALIDATION_PATH = DATA_PATH.joinpath("validation")
 
-    FRACTION = 0.01
+    FRACTION = 0.02
 
     # Load data
     df_train = (
