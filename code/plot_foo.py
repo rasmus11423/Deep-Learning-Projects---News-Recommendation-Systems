@@ -15,7 +15,7 @@ def plot_metric(run_name, metric="accuracy"):
     """
     # Define base and data paths
     BASE_PATH = Path(__file__).resolve().parent.parent
-    DATA_PATH = BASE_PATH.joinpath("data").joinpath(run_name)
+    DATA_PATH = BASE_PATH.joinpath("data").joinpath("model_"+run_name)
 
     # File paths for training and validation data
     training_file = DATA_PATH.joinpath(f"train_{metric}.csv")
@@ -51,14 +51,19 @@ def plot_metric(run_name, metric="accuracy"):
     sns.lineplot(data=combined_df, x="epoch", y=metric, hue="set", marker="o")
 
     # Add plot labels and title
-    plt.title(f"{metric.capitalize()} vs Epochs for {run_name}", fontsize=22)
+    plt.title(f"{metric.upper()} vs Epochs for Model {run_name}", fontsize=22)
     plt.xlabel("Epoch", fontsize=18)
-    plt.ylabel(metric.capitalize(), fontsize=18)
+    plt.ylabel(metric.upper(), fontsize=18)
     plt.legend(title="Dataset", fontsize=12)
+
+    # Ensure x-axis ticks are integers
+    max_epoch = int(combined_df["epoch"].max())
+    plt.xticks(ticks=range(0, max_epoch + 1), labels=range(0, max_epoch + 1))
+
     plt.tight_layout()
 
     # Save plot to PDF in the data directory
-    output_file = DATA_PATH.joinpath(f"{metric}_plot_"+run_name+".pdf")
+    output_file = DATA_PATH.joinpath(f"{metric}_plot_model_"+run_name+".pdf")
     plt.savefig(output_file, format="pdf", bbox_inches="tight")
 
     # Show the plot
@@ -66,4 +71,4 @@ def plot_metric(run_name, metric="accuracy"):
 
     print(f"Plot saved to {output_file}")
 
-plot_metric("run_40","auc")
+plot_metric("40","auc")
