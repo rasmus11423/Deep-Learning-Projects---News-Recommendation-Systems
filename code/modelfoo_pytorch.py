@@ -89,22 +89,26 @@ val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False, dr
 model = initialize_model(word2vec_embedding, title_size, HISTORY_SIZE, head_num, head_dim, attention_hidden_dim, dropout)
 
 print(f"Loaded word2vec embedding shape: {word2vec_embedding.shape}")
-
+lr =0.01
+weight_decay = 1e-5
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Selected device: {device}")
 model.to(device)
 
 # Set up optimizer and loss function
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5) # with added weight decay
+optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay) # with added weight decay
 criterion = nn.CrossEntropyLoss()
 
 if not args.debug:
     params = {
         "optimizer": "Adam",
-        "learning_rate":0.001,
+        "learning_rate":0.01,
         "dataset": dataset_name,
-        "batchsize": BATCH_SIZE
+        "batchsize": BATCH_SIZE,
+        "fraction":lr,
+        "weight_decay":weight_decay,
+        "embedding": "roberta"
         }
     run["parameters"] = params
 

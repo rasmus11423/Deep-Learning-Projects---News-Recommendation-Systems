@@ -68,7 +68,7 @@ def grab_data(dataset_name,HISTORY_SIZE):
     TRAIN_PATH = DATA_PATH.joinpath("train")
     VALIDATION_PATH = DATA_PATH.joinpath("validation")
 
-    FRACTION = 0.2
+    FRACTION = 0.1
 
     # Load data
     df_train = (
@@ -278,7 +278,7 @@ def validate_model(val_dataloader, model, criterion, device, args, run):
 
     if not args.debug:
         run["validation/loss"].log(val_loss)
-        run["validationrain/accuracy"].log(val_acc)
-        run["tvalidationain/auc"].log(val_auc)
+        run["validation/accuracy"].log(val_acc)
+        run["validation/auc"].log(val_auc)
 
     return val_loss, val_acc, val_auc
