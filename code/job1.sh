@@ -17,13 +17,13 @@
 # if you want to receive e-mail notifications on a non-default address
 ##BSUB -u s215160@dtu.dk
 # -- Output File --
-#BSUB -o first_4_seeds_%J.out
+#BSUB -o 4GB_4_mem_frac_01%J.out
 # -- Error File --
-#BSUB -e first_4_seeds_%J.err
+#BSUB -e 4GB_4_mem_frac_01_%J.err
 # -- estimated wall clock time (execution time): hh:mm -- 
-#BSUB -W 10:00 
+#BSUB -W 4:00 
 # -- Number of cores requested -- 
-#BSUB -n 4 
+#BSUB -n 4
 # -- Specify the distribution of the cores: on a single node --
 #BSUB -R "span[hosts=1]"
 # -- end of LSF options --
@@ -32,6 +32,9 @@
 # Your VENV path
 module load python3/3.11.9
 source "/zhome/06/9/168972/Deep_Learning/Deep-Learning-Projects---News-Recommendation-Systems/Deep_venv/bin/activate"
+
+export NEPTUNE_API_TOKEN="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI3ZmM0ZDRjMC00MDU4LTRmNTctYjViNC04NjA3ZWY4NzZmMGUifQ=="
+
 # here call torchrun
 #torchrun --standalone --nproc_per_node=1 
-python "/zhome/06/9/168972/Deep_Learning/Deep-Learning-Projects---News-Recommendation-Systems/code/modelfoo_python.py"
+python "/zhome/06/9/168972/Deep_Learning/Deep-Learning-Projects---News-Recommendation-Systems/code/modelfoo_pytorch.py" --dataset "ebnerd_small"
