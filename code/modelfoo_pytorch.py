@@ -113,7 +113,7 @@ if not args.debug:
         "learning_rate":lr,
         "dataset": dataset_name,
         "batchsize": BATCH_SIZE,
-        "fraction":0.15,
+        "fraction":0.05,
         "weight_decay":weight_decay,
         "embedding": "roberta"
         }
@@ -132,6 +132,68 @@ for epoch in range(epochs):
             val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device,args, run)
 
     print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
+
+import numpy as np
+
+from utils._behaviors import (
+    add_prediction_scores,
+    add_known_user_column
+)
+
+from utils._constants import (
+    DEFAULT_USER_COL,
+    DEFAULT_IMPRESSION_ID_COL,
+)
+from utils._python import write_submission_file, rank_predictions_by_score
+
+# Define output directory and file
+base_dir = Path(__file__).resolve().parent.parent.joinpath("data")
+output_dir = base_dir / "predictions"
+output_file = output_dir / "predictions.txt"
+
+# Ensure output directory exists
+output_dir.mkdir(parents=True, exist_ok=True)
+
+# Generate predictions from the model
+model.eval()  # Set model to evaluation mode
+pred_validation = []
+
+with torch.no_grad():
+    for (his_input_title, pred_input_title), _ in val_dataloader:
+        his_input_title = his_input_title.to(device)
+        pred_input_title = pred_input_title.to(device)
+
+        # Forward pass through the model
+        preds, _ = model(his_input_title, pred_input_title)
+        
+        # Collect predictions
+        pred_validation.extend(preds.cpu().numpy().tolist())
+
+# Ensure pred_validation is a numpy array
+pred_validation = np.array(pred_validation)
+
+# Add prediction scores and mark known users
+df_validation = add_prediction_scores(df_validation, pred_validation).pipe(
+    add_known_user_column, known_users=df_train[DEFAULT_USER_COL]
+)
+
+# Rank predictions and write submission file
+print("Ranking predictions and writing submission file...")
+df_validation = df_validation.with_columns(
+    pl.col("scores")
+    .map_elements(lambda x: list(rank_predictions_by_score(x)), return_dtype=pl.List(pl.Float64))
+    .alias("ranked_scores")
+)
+
+# Write submission file
+write_submission_file(
+    impression_ids=df_validation[DEFAULT_IMPRESSION_ID_COL],
+    prediction_scores=df_validation["ranked_scores"],
+    path=str(output_file),
+)
+
+print(f"Submission file successfully created at {output_file}.")
+
 
 if not args.debug:
     run.stop()

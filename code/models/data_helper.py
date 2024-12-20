@@ -68,7 +68,7 @@ def grab_data(dataset_name,HISTORY_SIZE):
     TRAIN_PATH = DATA_PATH.joinpath("train")
     VALIDATION_PATH = DATA_PATH.joinpath("validation")
 
-    FRACTION = 0.15
+    FRACTION = 0.05
 
     # Load data
     df_train = (
@@ -170,7 +170,7 @@ def train_model(train_dataloader, model, criterion, optimizer, device,args,run):
     all_labels = []
 
     for (his_input_title, pred_input_title), labels in train_dataloader:
-        print(f"Batch size: {his_input_title.shape[0]}")
+        #print(f"Batch size: {his_input_title.shape[0]}")
         # Remove unnecessary singleton dimension
         his_input_title = his_input_title.squeeze(1)  # shape: [batch_size, history_size, title_size]
         pred_input_title = pred_input_title.squeeze(1)  # shape: [batch_size, npratio, title_size]
