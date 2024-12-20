@@ -181,7 +181,7 @@ df_validation = add_prediction_scores(df_validation, pred_validation).pipe(
 print("Ranking predictions and writing submission file...")
 df_validation = df_validation.with_columns(
     pl.col("scores")
-    .map_elements(lambda x: list(rank_predictions_by_score(x)), return_dtype=pl.List(pl.Float64))
+    .map_elements(lambda x: list(rank_predictions_by_score(x)), return_dtype=pl.List(pl.Int32))
     .alias("ranked_scores")
 )
 
