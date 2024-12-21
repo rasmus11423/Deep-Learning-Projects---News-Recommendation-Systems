@@ -67,7 +67,7 @@ print("Grabbing train and validation set.")
 frac = 0.2
 df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE,frac)
 
-if not args.debug:
+if args.debug:
     df_train = df_train.head(4*BATCH_SIZE)
     df_validation = df_validation.head(4*BATCH_SIZE)
 
@@ -155,8 +155,8 @@ pred_validation = []
 # Load the test dataset
 print("Loading test dataset...")
 df_test = grab_data_test(dataset_name="ebnerd_testset", history_size=HISTORY_SIZE) #.head(4*BATCH_SIZE)
-if not args.debug:
-     df_test = df_test(4*BATCH_SIZE)
+if args.debug:
+     df_test = df_test.head(4*BATCH_SIZE)
 
 # Create Test Dataloader
 test_dataloader = NRMSDataLoader(
