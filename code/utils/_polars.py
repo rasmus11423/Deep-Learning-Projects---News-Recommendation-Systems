@@ -3,6 +3,9 @@ from utils._python import generate_unique_name
 
 def _check_columns_in_df(df: pl.DataFrame, columns: list[str]) -> None:
     """
+
+    From EBNerd-Benchmark.
+
     Checks whether all specified columns are present in a Polars DataFrame.
     Raises a ValueError if any of the specified columns are not present in the DataFrame.
 
@@ -27,6 +30,8 @@ def _check_columns_in_df(df: pl.DataFrame, columns: list[str]) -> None:
 
 def shuffle_rows(df: pl.DataFrame, seed: int = None) -> pl.DataFrame:
     """
+    From EBNerd-Benchmark.
+
     Shuffle the rows of a DataFrame. This methods allows for LazyFrame,
     whereas, 'df.sample(fraction=1)' is not compatible.
 
@@ -82,6 +87,8 @@ def shuffle_rows(df: pl.DataFrame, seed: int = None) -> pl.DataFrame:
 
 def concat_str_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
     """
+    From EBNerd-Benchmark.
+
     >>> df = pl.DataFrame(
             {
                 "id": [1, 2, 3],
@@ -109,7 +116,10 @@ def concat_str_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
 def shuffle_list_column(
     df: pl.DataFrame, column: str, seed: int = None
 ) -> pl.DataFrame:
-    """Shuffles the values in a list column of a DataFrame.
+    """
+    From EBNerd-Benchmark.
+    
+    Shuffles the values in a list column of a DataFrame.
 
     Args:
         df (pl.DataFrame): The input DataFrame.

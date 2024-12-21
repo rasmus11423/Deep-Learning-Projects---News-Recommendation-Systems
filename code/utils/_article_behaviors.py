@@ -10,6 +10,7 @@ def map_list_article_id_to_value(
     fill_nulls: any = None,
 ) -> pl.DataFrame:
     """
+    From EBNerd-Benchmark.
 
     Maps the values of a column in a DataFrame `behaviors` containing article IDs to their corresponding values
     in a column in another DataFrame `articles`. The mapping is performed using a dictionary constructed from

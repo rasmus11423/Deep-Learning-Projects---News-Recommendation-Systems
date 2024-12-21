@@ -42,6 +42,8 @@ def rank_predictions_by_score(
     arr: Iterable[float],
 ) -> list[np.ndarray]:
     """
+    From EBNerd-Benchmark.
+
     Converts the prediction scores based on their ranking (1 for highest score,
     2 for second highest, etc.), effectively ranking prediction scores for each row.
 
@@ -67,6 +69,8 @@ def write_submission_file(
     filename_zip: str = None,
 ) -> None:
     """
+    From EBNerd-Benchmark.
+
     We align the submission file similar to MIND-format for users who are familar.
 
     Reference:
@@ -92,6 +96,8 @@ def write_submission_file(
 
 def read_submission_file(path: Path) -> tuple[int, any]:
     """
+    From EBNerd-Benchmark.
+
     >>> impression_ids = [237, 291, 320]
     >>> prediction_scores = [[0.2, 0.1, 0.3], [0.1, 0.2], [0.4, 0.2, 0.1, 0.3]]
     >>> write_submission_file(impression_ids, prediction_scores, path="predictions.txt", rm_file=False)
@@ -119,6 +125,8 @@ def zip_submission_file(
     rm_file: bool = True,
 ) -> None:
     """
+    From EBNerd-Benchmark.
+
     Compresses a specified file into a ZIP archive within the same directory.
 
     Args:
@@ -150,6 +158,8 @@ def zip_submission_file(
 
 def parse_line(l) -> tuple[str, list[float]]:
     """
+    From EBNerd-Benchmark.
+
     Parses a single line of text into an identifier and a list of ranks.
     """
     impid, ranks = l.strip("\n").split()
@@ -242,6 +252,8 @@ def generate_unique_name(existing_names: list[str], base_name: str = "new_name")
 
 def compute_npratio(n_pos: int, n_neg: int) -> float:
     """
+    From EBNerd-Benchmark.
+
     Similar approach as:
         "Neural News Recommendation with Long- and Short-term User Representations (An et al., ACL 2019)"
 
@@ -256,6 +268,8 @@ def compute_npratio(n_pos: int, n_neg: int) -> float:
 
 def strfdelta(tdelta: datetime.timedelta):
     """
+    From EBNerd-Benchmark.
+
     Example:
     >>> tdelta = datetime.timedelta(days=1, hours=3, minutes=42, seconds=54)
     >>> strfdelta(tdelta)
@@ -273,6 +287,8 @@ def str_datetime_now():
 
 def get_object_variables(object_: object) -> dict:
     """
+    From EBNerd-Benchmark.
+
     Example:
     >>> class example:
             a = 2
@@ -289,6 +305,8 @@ def get_object_variables(object_: object) -> dict:
 
 def batch_items_generator(items: Iterable[any], batch_size: int):
     """
+    From EBNerd-Benchmark.
+
     Generator function that chunks a list of items into batches of a specified size.
 
     Args:
@@ -314,6 +332,9 @@ def batch_items_generator(items: Iterable[any], batch_size: int):
 
 def unnest_dictionary(dictionary, parent_key="") -> dict:
     """
+
+    From EBNerd-Benchmark.
+
     Unnests a dictionary by adding the key to the nested names.
 
     Args:
@@ -373,6 +394,7 @@ def repeat_by_list_values_from_matrix(
     repeats: np.array,
 ) -> np.array:
     """
+    From EBNerd-Benchmark.
     Example:
         >>> input = np.array([[1, 0], [0, 0]])
         >>> matrix = np.array([[7,8,9], [10,11,12]])
@@ -390,6 +412,9 @@ def repeat_by_list_values_from_matrix(
 
 def create_lookup_dict(df: pl.DataFrame, key: str, value: str) -> dict:
     """
+
+    From EBNerd-Benchmark.
+
     Creates a dictionary lookup table from a Pandas-like DataFrame.
 
     Args:

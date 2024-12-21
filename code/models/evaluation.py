@@ -2,6 +2,8 @@ import numpy as np
 
 def auc_score_custom(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
+    From EBNerd-Benchmark.
+
     Computes the Area Under the Curve (AUC) score for the Receiver Operating Characteristic (ROC) curve using a
     custom method. This implementation is particularly useful for understanding basic ROC curve properties and
     for educational purposes to demonstrate how AUC scores can be manually calculated.

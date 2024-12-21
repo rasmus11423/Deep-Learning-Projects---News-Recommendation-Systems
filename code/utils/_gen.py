@@ -3,6 +3,8 @@ import polars as pl
 
 def create_lookup_dict(df: pl.DataFrame, key: str, value: str) -> dict:
     """
+    From EBNerd-Benchmark.
+    
     Creates a dictionary lookup table from a Pandas-like DataFrame.
 
     Args:
@@ -24,7 +26,10 @@ def create_lookup_dict(df: pl.DataFrame, key: str, value: str) -> dict:
 def create_lookup_objects(
     lookup_dictionary: dict[int, np.array], unknown_representation: str
 ) -> tuple[dict[int, pl.Series], np.array]:
-    """Creates lookup objects for efficient data retrieval.
+    """
+    From EBNerd-Benchmark.
+
+    Creates lookup objects for efficient data retrieval.
 
     This function generates a dictionary of indexes and a matrix from the given lookup dictionary.
     The generated lookup matrix has an additional row based on the specified unknown representation

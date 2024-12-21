@@ -12,7 +12,10 @@ def convert_text2encoding_with_transformers(
     column: str,
     max_length: int = None,
 ) -> pl.DataFrame:
-    """Converts text in a specified DataFrame column to tokens using a provided tokenizer.
+    """
+    From EBNerd-Benchmark.
+    
+    Converts text in a specified DataFrame column to tokens using a provided tokenizer.
     Args:
         df (pl.DataFrame): The input DataFrame containing the text column.
         tokenizer (AutoTokenizer): The tokenizer to use for encoding the text. (from transformers import AutoTokenizer)

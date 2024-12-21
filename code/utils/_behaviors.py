@@ -15,6 +15,9 @@ from utils._gen import create_lookup_dict
 
 def generate_unique_name(existing_names: list[str], base_name: str = "new_name"):
     """
+
+    From EBNerd-Benchmark.
+
     Generate a unique name based on a list of existing names.
 
     Args:
@@ -49,7 +52,10 @@ def create_binary_labels_column(
     inview_col: str = DEFAULT_INVIEW_ARTICLES_COL,
     label_col: str = DEFAULT_LABELS_COL,
 ) -> pl.DataFrame:
-    """Creates a new column in a DataFrame containing binary labels indicating
+    """
+    From EBNerd-Benchmark.
+
+    Creates a new column in a DataFrame containing binary labels indicating
     whether each article ID in the "article_ids" column is present in the corresponding
     "list_destination" column.
 
@@ -144,7 +150,10 @@ def truncate_history(
     padding_value: Any = None,
     enable_warning: bool = True,
 ) -> pl.DataFrame:
-    """Truncates the history of a column containing a list of items.
+    """
+    From EBNerd-Benchmark.
+
+    Truncates the history of a column containing a list of items.
 
     It is the tail of the values, i.e. the history ids should ascending order
     because each subsequent element (original timestamp) is greater than the previous element
@@ -216,7 +225,11 @@ def remove_positives_from_inview(
     inview_col: str = DEFAULT_INVIEW_ARTICLES_COL,
     clicked_col: str = DEFAULT_CLICKED_ARTICLES_COL,
 ):
-    """Removes all positive article IDs from a DataFrame column containing inview articles and another column containing
+    """
+    
+    From EBNerd-Benchmark.
+
+    Removes all positive article IDs from a DataFrame column containing inview articles and another column containing
     clicked articles. Only negative article IDs (i.e., those that appear in the inview articles column but not in the
     clicked articles column) are retained.
 
@@ -270,6 +283,9 @@ def sample_article_ids(
     inview_col: str = DEFAULT_INVIEW_ARTICLES_COL,
 ) -> pl.DataFrame:
     """
+
+    From EBNerd-Benchmark.
+
     Randomly sample article IDs from each row of a DataFrame with or without replacement
 
     Args:
@@ -368,6 +384,8 @@ def sampling_strategy_wu2019(
     clicked_col: str = DEFAULT_CLICKED_ARTICLES_COL,
 ) -> pl.DataFrame:
     """
+    From EBNerd-Benchmark.
+
     Samples negative articles from the inview article pool for a given negative-position-ratio (npratio).
     The npratio (negative article per positive article) is defined as the number of negative article samples
     to draw for each positive article sample.
@@ -523,6 +541,8 @@ def add_known_user_column(
     known_user_col: str = DEFAULT_KNOWN_USER_COL,
 ) -> pl.DataFrame:
     """
+    From EBNerd-Benchmark.
+    
     Adds a new column to the DataFrame indicating whether the user ID is in the list of known users.
     Args:
         df: A Polars DataFrame object.

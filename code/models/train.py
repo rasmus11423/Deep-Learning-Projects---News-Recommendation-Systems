@@ -39,6 +39,8 @@ COLUMNS = [
 def grab_data(dataset_name,HISTORY_SIZE, FRACTION):
     def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.LazyFrame:
         """
+        From EBNerd-Benchmark.
+
         Load ebnerd - function
         """
         df_history = (
@@ -290,6 +292,8 @@ def validate_model(val_dataloader, model, criterion, device, args, run):
 def grab_data_test(dataset_name, history_size):
     def ebnerd_from_path_test(path: Path, history_size: int = 30) -> pl.DataFrame:
         """
+        From EBNerd-Benchmark.
+        
         Load ebnerd test dataset - function
         """
         df_history = (
