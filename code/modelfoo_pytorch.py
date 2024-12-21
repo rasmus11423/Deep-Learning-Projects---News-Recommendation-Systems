@@ -53,7 +53,7 @@ else:
 
 # set parameters 
 HISTORY_SIZE = 20
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 title_size, history_size = 30, 30
 head_num, head_dim, attention_hidden_dim, dropout = 20, 20, 200, 0.2
 
@@ -124,7 +124,7 @@ if not args.debug:
     run["parameters"] = params
 
 # Training and validation loop
-epochs = 2
+epochs = 20
 for epoch in range(epochs):
     # Train the model
     with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
