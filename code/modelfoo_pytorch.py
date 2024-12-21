@@ -10,7 +10,7 @@ import polars as pl
 import numpy as np
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-from models.data_helper import grab_data,grab_embeded_articles,initialize_model,train_model,validate_model,grab_data_test,predict_model
+from models.train import grab_data,grab_embeded_articles,initialize_model,train_model,validate_model,grab_data_test,predict_model
 from utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL,
     DEFAULT_IMPRESSION_ID_COL
@@ -53,7 +53,7 @@ else:
 
 # set parameters 
 HISTORY_SIZE = 20
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 title_size, history_size = 30, 30
 head_num, head_dim, attention_hidden_dim, dropout = 20, 20, 200, 0.2
 
@@ -64,7 +64,7 @@ LOCAL_MODEL_PATH = BASE_PATH.joinpath("data/local-tokenizer-model")
 
 ## Grab Data
 print("Grabbing train and validation set.")
-frac = 0.15
+frac = 0.2
 df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE,frac)
 
 #df_train = df_train.head(4*BATCH_SIZE)
@@ -100,7 +100,7 @@ val_loader = DataLoader(val_dataloader, batch_size=BATCH_SIZE, shuffle=False, dr
 model = initialize_model(word2vec_embedding, title_size, HISTORY_SIZE, head_num, head_dim, attention_hidden_dim, dropout)
 
 print(f"Loaded word2vec embedding shape: {word2vec_embedding.shape}")
-lr =0.001
+lr =0.01
 weight_decay = 1e-5
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -124,7 +124,7 @@ if not args.debug:
     run["parameters"] = params
 
 # Training and validation loop
-epochs = 15
+epochs = 20
 for epoch in range(epochs):
     # Train the model
     with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
