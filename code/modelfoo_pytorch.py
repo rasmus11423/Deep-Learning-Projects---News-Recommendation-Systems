@@ -67,8 +67,9 @@ print("Grabbing train and validation set.")
 frac = 0.2
 df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE,frac)
 
-#df_train = df_train.head(4*BATCH_SIZE)
-#df_validation = df_validation.head(4*BATCH_SIZE)
+if not args.debug:
+    df_train = df_train.head(4*BATCH_SIZE)
+    df_validation = df_validation.head(4*BATCH_SIZE)
 
 print("Grabbing articles and embeddings")
 article_mapping, word2vec_embedding = grab_embeded_articles(LOCAL_TOKENIZER_PATH,LOCAL_MODEL_PATH,dataset_name, title_size)
@@ -154,6 +155,8 @@ pred_validation = []
 # Load the test dataset
 print("Loading test dataset...")
 df_test = grab_data_test(dataset_name="ebnerd_testset", history_size=HISTORY_SIZE) #.head(4*BATCH_SIZE)
+if not args.debug:
+     df_test = df_test(4*BATCH_SIZE)
 
 # Create Test Dataloader
 test_dataloader = NRMSDataLoader(
@@ -162,7 +165,7 @@ test_dataloader = NRMSDataLoader(
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     unknown_representation="zeros",
     eval_mode=True,  # Test mode
-    batch_size=BATCH_SIZE,
+    batch_size=4*BATCH_SIZE,
 )
 
 pred_test = predict_model(test_dataloader, model, device)
