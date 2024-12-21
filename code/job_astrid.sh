@@ -21,7 +21,7 @@
 # -- Error File --
 #BSUB -e first_4_seeds_%J.err
 # -- estimated wall clock time (execution time): hh:mm -- 
-#BSUB -W 2:00 
+#BSUB -W 4:00 
 # -- Number of cores requested -- 
 #BSUB -n 4 
 # -- Specify the distribution of the cores: on a single node --

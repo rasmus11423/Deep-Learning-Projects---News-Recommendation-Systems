@@ -52,8 +52,8 @@ else:
     print("Debug mode: Neptune logging is disabled.")
 
 # set parameters 
-HISTORY_SIZE = 10
-BATCH_SIZE = 16
+HISTORY_SIZE = 20
+BATCH_SIZE = 64
 title_size, history_size = 30, 30
 head_num, head_dim, attention_hidden_dim, dropout = 20, 20, 200, 0.2
 
@@ -64,11 +64,12 @@ LOCAL_MODEL_PATH = BASE_PATH.joinpath("data/local-tokenizer-model")
 
 ## Grab Data
 print("Grabbing train and validation set.")
+frac = 0.15
+df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE,frac)
 
-df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE)
+#df_train = df_train.head(4*BATCH_SIZE)
+#df_validation = df_validation.head(4*BATCH_SIZE)
 
-df_train = df_train.head(4*BATCH_SIZE)
-df_validation = df_validation.head(4*BATCH_SIZE)
 
 print("Grabbing articles and embeddings")
 article_mapping, word2vec_embedding = grab_embeded_articles(LOCAL_TOKENIZER_PATH,LOCAL_MODEL_PATH,dataset_name, title_size)
@@ -117,14 +118,14 @@ if not args.debug:
         "learning_rate":lr,
         "dataset": dataset_name,
         "batchsize": BATCH_SIZE,
-        "fraction":0.05,
+        "fraction": frac,
         "weight_decay":weight_decay,
         "embedding": "roberta"
         }
     run["parameters"] = params
 
 # Training and validation loop
-epochs = 2
+epochs = 20
 for epoch in range(epochs):
     # Train the model
     with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
@@ -153,7 +154,7 @@ pred_validation = []
 
 # Load the test dataset
 print("Loading test dataset...")
-df_test = grab_data_test(dataset_name="ebnerd_testset", history_size=HISTORY_SIZE).head(4*BATCH_SIZE)
+df_test = grab_data_test(dataset_name="ebnerd_testset", history_size=HISTORY_SIZE) #.head(4*BATCH_SIZE)
 
 # Create Test Dataloader
 test_dataloader = NRMSDataLoader(

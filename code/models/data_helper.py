@@ -33,7 +33,7 @@ COLUMNS = [
         DEFAULT_IMPRESSION_ID_COL,
     ]
 
-def grab_data(dataset_name,HISTORY_SIZE):
+def grab_data(dataset_name,HISTORY_SIZE, FRACTION):
     def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.LazyFrame:
         """
         Load ebnerd - function
@@ -68,7 +68,6 @@ def grab_data(dataset_name,HISTORY_SIZE):
     TRAIN_PATH = DATA_PATH.joinpath("train")
     VALIDATION_PATH = DATA_PATH.joinpath("validation")
 
-    FRACTION = 0.05
 
     # Load data
     df_train = (
