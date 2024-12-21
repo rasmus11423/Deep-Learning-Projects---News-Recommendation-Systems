@@ -64,7 +64,7 @@ LOCAL_MODEL_PATH = BASE_PATH.joinpath("data/local-tokenizer-model")
 
 ## Grab Data
 print("Grabbing train and validation set.")
-frac = 0.15
+frac = 0.2
 df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE,frac)
 
 if args.debug:
