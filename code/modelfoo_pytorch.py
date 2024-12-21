@@ -1,18 +1,26 @@
 import argparse
 import neptune
+import gc
 import os
 from pathlib import Path
 import torch
 import torch.nn as nn
 from models.dataloader_pytorch import NRMSDataLoader
 import polars as pl 
-
+import numpy as np
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from models.data_helper import grab_data,grab_embeded_articles,initialize_model,train_model,validate_model,grab_data_test
 from utils._constants import (
-    DEFAULT_HISTORY_ARTICLE_ID_COL
+    DEFAULT_HISTORY_ARTICLE_ID_COL,
+    DEFAULT_IMPRESSION_ID_COL
 )
+from utils._behaviors import (
+    add_prediction_scores
+)
+from utils._python import write_submission_file, rank_predictions_by_score
+
+
 torch.cuda.empty_cache()
 
 # Parse command-line arguments
@@ -129,19 +137,7 @@ for epoch in range(epochs):
 
     print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
 
-
-import numpy as np
-
-from utils._behaviors import (
-    add_prediction_scores,
-    add_known_user_column
-)
-
-from utils._constants import (
-    DEFAULT_USER_COL,
-    DEFAULT_IMPRESSION_ID_COL,
-)
-from utils._python import write_submission_file, rank_predictions_by_score
+gc.collect()
 
 # Define output directory and file
 base_dir = Path(__file__).resolve().parent.parent.joinpath("data")
@@ -157,7 +153,7 @@ pred_validation = []
 
 # Load the test dataset
 print("Loading test dataset...")
-df_test = grab_data_test(dataset_name="ebnerd_testset", history_size=HISTORY_SIZE)
+df_test = grab_data_test(dataset_name="ebnerd_testset", history_size=HISTORY_SIZE).head(4*BATCH_SIZE)
 
 # Create Test Dataloader
 test_dataloader = NRMSDataLoader(
