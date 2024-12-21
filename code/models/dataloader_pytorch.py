@@ -70,11 +70,15 @@ class NewsrecDataLoader(Dataset):
 
         # Select the batch data
         batch_X = self.X[start_idx:end_idx].pipe(self.transform)
-        batch_y = self.y[start_idx:end_idx]
+        if self.labels_col in self.behaviors.columns:
+                batch_y = self.y[start_idx:end_idx]
+        else: batch_y= batch_y= np.zeros(end_idx - start_idx +1 )
+        
 
         if self.eval_mode:
             repeats = np.array(batch_X["n_samples"])
-            batch_y = np.array(batch_y.explode().to_list()).reshape(-1, 1)
+            if self.labels_col in self.behaviors.columns:
+                batch_y = np.array(batch_y.explode().to_list()).reshape(-1, 1)
             his_input_title = repeat_by_list_values_from_matrix(
                 batch_X[self.history_column].to_list(),
                 matrix=self.lookup_article_matrix,
@@ -104,10 +108,16 @@ class NewsrecDataLoader(Dataset):
 
 
     def load_data(self) -> tuple[pl.DataFrame, pl.DataFrame]:
-        X = self.behaviors.drop(self.labels_col).with_columns(
-            pl.col(self.inview_col).list.len().alias("n_samples")
-        )
-        y = self.behaviors[self.labels_col]
+        if self.labels_col in self.behaviors.columns:
+            X = self.behaviors.drop(self.labels_col).with_columns(
+                pl.col(self.inview_col).list.len().alias("n_samples")
+            )
+            y = self.behaviors[self.labels_col]
+        else: 
+            X = self.behaviors.with_columns(
+                pl.col(self.inview_col).list.len().alias("n_samples")
+            )
+            y = None
         return X, y
 
     def set_kwargs(self, kwargs: dict):

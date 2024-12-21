@@ -186,6 +186,7 @@ with torch.no_grad():
 
         # Collect predictions
         pred_test.extend(preds.cpu().numpy().tolist())
+        print("testing: batch predicted")
 
 # Convert predictions to NumPy array
 pred_test = np.array(pred_test)
