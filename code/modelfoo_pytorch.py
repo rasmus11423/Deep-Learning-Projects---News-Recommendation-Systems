@@ -9,7 +9,7 @@ import polars as pl
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-from models.data_helper import grab_data,grab_embeded_articles,initialize_model,train_model,validate_model
+from models.data_helper import grab_data,grab_embeded_articles,initialize_model,train_model,validate_model,grab_data_test
 from utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL
 )
@@ -44,8 +44,8 @@ else:
     print("Debug mode: Neptune logging is disabled.")
 
 # set parameters 
-HISTORY_SIZE = 20
-BATCH_SIZE = 64
+HISTORY_SIZE = 10
+BATCH_SIZE = 16
 title_size, history_size = 30, 30
 head_num, head_dim, attention_hidden_dim, dropout = 20, 20, 200, 0.2
 
@@ -77,7 +77,7 @@ train_dataloader = NRMSDataLoader(
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     unknown_representation="zeros",
     eval_mode=False,
-    batch_size=BATCH_SIZE, 
+    batch_size=BATCH_SIZE*4, 
 )
 
 val_dataloader = NRMSDataLoader(
@@ -86,7 +86,7 @@ val_dataloader = NRMSDataLoader(
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     unknown_representation="zeros",
     eval_mode=True,
-    batch_size=BATCH_SIZE,
+    batch_size=BATCH_SIZE*4,
 )
 
 # Wrap in PyTorch DataLoader
@@ -120,18 +120,19 @@ if not args.debug:
     run["parameters"] = params
 
 # Training and validation loop
-epochs = 20
+epochs = 1
 for epoch in range(epochs):
-    # Train the model
-    with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
-            train_loss, train_acc, train_auc = train_model(pbar, model, criterion, optimizer, device, args, run)
-    print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}, Train Auc = {train_auc:.4f}")
+    # # Train the model
+    # with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
+    #         train_loss, train_acc, train_auc = train_model(pbar, model, criterion, optimizer, device, args, run)
+    # print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}, Train Auc = {train_auc:.4f}")
 
-    # Validate the model
-    with tqdm(val_dataloader, desc=f"Validation Epoch {epoch + 1}") as pbar:
-            val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device,args, run)
+    # # Validate the model
+    # with tqdm(val_dataloader, desc=f"Validation Epoch {epoch + 1}") as pbar:
+    #         val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device,args, run)
 
-    print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
+    # print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
+    pass
 
 import numpy as np
 
@@ -146,6 +147,8 @@ from utils._constants import (
 )
 from utils._python import write_submission_file, rank_predictions_by_score
 
+from models.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
+
 # Define output directory and file
 base_dir = Path(__file__).resolve().parent.parent.joinpath("data")
 output_dir = base_dir / "predictions"
@@ -158,41 +161,60 @@ output_dir.mkdir(parents=True, exist_ok=True)
 model.eval()  # Set model to evaluation mode
 pred_validation = []
 
+# Load the test dataset
+print("Loading test dataset...")
+df_test = grab_data_test(dataset_name="ebnerd_testset", history_size=HISTORY_SIZE)
+
+# Create Test Dataloader
+test_dataloader = NRMSDataLoader(
+    behaviors=df_test,
+    article_dict=article_mapping,
+    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+    unknown_representation="zeros",
+    eval_mode=True,  # Test mode
+    batch_size=BATCH_SIZE,
+)
+
+# Generate predictions
+print("Generating predictions for test set...")
+model.eval()
+pred_test = []
+
 with torch.no_grad():
-    for (his_input_title, pred_input_title), _ in val_dataloader:
+    for (his_input_title, pred_input_title), _ in test_dataloader:
         his_input_title = his_input_title.to(device)
         pred_input_title = pred_input_title.to(device)
 
-        # Forward pass through the model
+        # Forward pass
         preds, _ = model(his_input_title, pred_input_title)
-        
+
         # Collect predictions
-        pred_validation.extend(preds.cpu().numpy().tolist())
+        pred_test.extend(preds.cpu().numpy().tolist())
 
-# Ensure pred_validation is a numpy array
-pred_validation = np.array(pred_validation)
+# Convert predictions to NumPy array
+pred_test = np.array(pred_test)
 
-# Add prediction scores and mark known users
-df_validation = add_prediction_scores(df_validation, pred_validation).pipe(
-    add_known_user_column, known_users=df_train[DEFAULT_USER_COL]
-)
+# Add prediction scores
+df_test = add_prediction_scores(df_test, pred_test)
 
-# Rank predictions and write submission file
-print("Ranking predictions and writing submission file...")
-df_validation = df_validation.with_columns(
+# Rank predictions
+print("Ranking predictions for test set...")
+df_test = df_test.with_columns(
     pl.col("scores")
     .map_elements(lambda x: list(rank_predictions_by_score(x)), return_dtype=pl.List(pl.Int32))
     .alias("ranked_scores")
 )
 
 # Write submission file
+test_output_file = Path("data/predictions/test_predictions.txt")
+test_output_file.parent.mkdir(parents=True, exist_ok=True)
 write_submission_file(
-    impression_ids=df_validation[DEFAULT_IMPRESSION_ID_COL],
-    prediction_scores=df_validation["ranked_scores"],
-    path=str(output_file),
+    impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
+    prediction_scores=df_test["ranked_scores"],
+    path=str(test_output_file),
 )
 
-print(f"Submission file successfully created at {output_file}.")
+print(f"Test predictions saved at: {test_output_file}")
 
 
 if not args.debug:

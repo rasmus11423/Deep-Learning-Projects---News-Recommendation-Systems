@@ -286,3 +286,49 @@ def validate_model(val_dataloader, model, criterion, device, args, run):
         run["validation/auc"].log(val_auc)
 
     return val_loss, val_acc, val_auc
+
+
+def grab_data_test(dataset_name, history_size):
+    def ebnerd_from_path_test(path: Path, history_size: int = 30) -> pl.DataFrame:
+        """
+        Load ebnerd test dataset - function
+        """
+        df_history = (
+            pl.read_parquet(path.joinpath("history.parquet"))
+            .select(DEFAULT_USER_COL, DEFAULT_HISTORY_ARTICLE_ID_COL)
+            .pipe(
+                truncate_history,
+                column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+                history_size=history_size,
+                padding_value=0,
+                enable_warning=False,
+            )
+        )
+
+        df_behaviors = (
+            pl.read_parquet(path.joinpath("behaviors.parquet"))
+            .pipe(
+                slice_join_dataframes,
+                df2=df_history,
+                on=DEFAULT_USER_COL,
+                how="left",
+            )
+        )
+        return df_behaviors
+
+    BASE_PATH = Path(__file__).resolve().parent.parent.parent
+    DATA_PATH = BASE_PATH.joinpath("data").joinpath(dataset_name)
+    TEST_PATH = DATA_PATH.joinpath("test")
+
+    # Define test-specific columns (exclude `article_ids_clicked`)
+    TEST_COLUMNS = [
+        DEFAULT_USER_COL,
+        DEFAULT_HISTORY_ARTICLE_ID_COL,
+        DEFAULT_INVIEW_ARTICLES_COL,
+        DEFAULT_IMPRESSION_ID_COL,
+    ]
+
+    # Load test data
+    df_test = ebnerd_from_path_test(TEST_PATH, history_size=history_size).select(TEST_COLUMNS)
+
+    return df_test
