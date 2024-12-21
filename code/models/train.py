@@ -121,7 +121,6 @@ def grab_embeded_articles(tokenizer_path,model_path,dataset_name, MAX_TITLE_LENG
         df_articles, transformer_tokenizer, cat_cal, max_length=MAX_TITLE_LENGTH
     )
 
-    print(df_articles)
 
     article_mapping = create_article_id_to_value_mapping(
         df=df_articles, value_col=token_col_title
