@@ -143,8 +143,6 @@ from utils._constants import (
 )
 from utils._python import write_submission_file, rank_predictions_by_score
 
-from models.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
-
 # Define output directory and file
 base_dir = Path(__file__).resolve().parent.parent.joinpath("data")
 output_dir = base_dir / "predictions"
