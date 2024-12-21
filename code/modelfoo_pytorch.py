@@ -59,12 +59,8 @@ print("Grabbing train and validation set.")
 
 df_train, df_validation = grab_data(dataset_name,HISTORY_SIZE)
 
-df_no_ones = df_validation.filter(
-    pl.col("labels").list.sum()==0
-)
-
-# Show the filtered rows
-print(df_no_ones)
+df_train = df_train.head(4*BATCH_SIZE)
+df_validation = df_validation.head(4*BATCH_SIZE)
 
 print("Grabbing articles and embeddings")
 article_mapping, word2vec_embedding = grab_embeded_articles(LOCAL_TOKENIZER_PATH,LOCAL_MODEL_PATH,dataset_name, title_size)
@@ -77,7 +73,7 @@ train_dataloader = NRMSDataLoader(
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     unknown_representation="zeros",
     eval_mode=False,
-    batch_size=BATCH_SIZE*4, 
+    batch_size=BATCH_SIZE, 
 )
 
 val_dataloader = NRMSDataLoader(
@@ -86,7 +82,7 @@ val_dataloader = NRMSDataLoader(
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     unknown_representation="zeros",
     eval_mode=True,
-    batch_size=BATCH_SIZE*4,
+    batch_size=BATCH_SIZE,
 )
 
 # Wrap in PyTorch DataLoader
@@ -120,19 +116,19 @@ if not args.debug:
     run["parameters"] = params
 
 # Training and validation loop
-epochs = 1
+epochs = 2
 for epoch in range(epochs):
-    # # Train the model
-    # with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
-    #         train_loss, train_acc, train_auc = train_model(pbar, model, criterion, optimizer, device, args, run)
-    # print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}, Train Auc = {train_auc:.4f}")
+    # Train the model
+    with tqdm(train_dataloader, desc=f"Training Epoch {epoch + 1}") as pbar:
+            train_loss, train_acc, train_auc = train_model(pbar, model, criterion, optimizer, device, args, run)
+    print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}, Train Auc = {train_auc:.4f}")
 
-    # # Validate the model
-    # with tqdm(val_dataloader, desc=f"Validation Epoch {epoch + 1}") as pbar:
-    #         val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device,args, run)
+    # Validate the model
+    with tqdm(val_dataloader, desc=f"Validation Epoch {epoch + 1}") as pbar:
+            val_loss, val_acc, val_auc = validate_model(pbar, model, criterion, device,args, run)
 
-    # print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
-    pass
+    print(f"Epoch {epoch + 1}: Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.4f}, Val Auc = {val_auc:.4f}")
+
 
 import numpy as np
 
@@ -195,13 +191,13 @@ with torch.no_grad():
 pred_test = np.array(pred_test)
 
 # Add prediction scores
-df_test = add_prediction_scores(df_test, pred_test)
+df_test = add_prediction_scores(df_test, pred_test.tolist())
 
 # Rank predictions
 print("Ranking predictions for test set...")
 df_test = df_test.with_columns(
     pl.col("scores")
-    .map_elements(lambda x: list(rank_predictions_by_score(x)), return_dtype=pl.List(pl.Int32))
+    .map_elements(lambda x: list(rank_predictions_by_score(x)))
     .alias("ranked_scores")
 )
 
