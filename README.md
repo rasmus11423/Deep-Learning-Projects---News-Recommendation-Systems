@@ -28,3 +28,23 @@ This project implements a **Neural News Recommendation System (NRMS)** using the
 - **Performance**:
   - Best AUC ~0.568 on the validation set (with limited training data due to memory constraints)
   - Negative sampling and cross-entropy loss improved the model’s training performance
+
+---
+
+## **Key Files**
+
+### `dummyModel.ipynb`
+- Initializes and trains the NRMS model with minimal data  
+- Illustrates the PyTorch-based workflow for data loading, tokenizing, and running the training loop
+
+### `tokenizerDownloader.py`
+- Downloads the **XLM-RoBERTa-base** tokenizer from Hugging Face  
+- Ensures that the correct tokenizer files exist in the `data/` folder for subsequent model training
+
+### `ebnerd-demo` (within `data/`)
+- A small sample dataset for demo or testing  
+- Full dataset(s) are typically larger and must be placed here (or adapt the notebook if you store them elsewhere)
+
+---
+
+
