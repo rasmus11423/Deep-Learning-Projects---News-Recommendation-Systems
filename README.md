@@ -47,4 +47,39 @@ This project implements a **Neural News Recommendation System (NRMS)** using the
 
 ---
 
+## **Model Details**
 
+- **Negative Sampling & Cross-Entropy Loss**:
+  - Implemented to address classification of clicked vs. unclicked articles
+  - Helps reduce overfitting by comparing clicked items to randomly sampled unclicked ones
+
+- **Attention Mechanisms**:
+  - **Multi-head self-attention** captures contextual relationships between words (in articles) and between articles (in user history)
+  - Incorporates an **additive attention** layer to emphasize the most relevant words or articles in the final encoding
+
+---
+
+## **Limitations & Future Work**
+
+- **Memory Constraints**:
+  - The PyTorch DataLoader for EB-NeRD can be memory-intensive
+  - We used a smaller sample for quick training, limiting maximum achievable performance
+
+- **Extending the User Encoder**:
+  - Additional features (user demographics, sentiment analysis, etc.) could improve personalization
+
+- **Regularization & Early Stopping**:
+  - Overfitting often appeared after ~15 epochs
+  - Early stopping or more aggressive regularization could further stabilize training
+
+---
+
+## **References**
+
+[1] **Mingxiao An, Fangzhao Wu, Chuhan Wu, Kun Zhang, Zheng Liu, and Xing Xie.**  
+“Neural news recommendation with long- and short-term user representations.”  
+*Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics*, 2019.
+
+---
+
+Enjoy exploring the **Neural News Recommendation System**! If you have any questions or discover improvements, feel free to open an issue or submit a pull request.
